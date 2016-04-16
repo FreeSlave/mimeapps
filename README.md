@@ -55,7 +55,7 @@ Use this example to check if the mimeapps library can parse all related files on
 
     dub run :test
     
-### [Mimeapps open](examples/test/source/app.d)
+### [Mimeapps open](examples/open/source/app.d)
 
 Detect MIME type of file and open it with default application for found type.
 
