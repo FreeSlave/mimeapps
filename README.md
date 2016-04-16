@@ -1,6 +1,9 @@
 # Mimeapps
 
 D library for finding associations between MIME types and applications, e.g. for deciding which application should be used to open a file.
+
+[![Build Status](https://travis-ci.org/MyLittleRobo/mimeapps.svg?branch=master)](https://travis-ci.org/MyLittleRobo/mimeapps) [![Coverage Status](https://coveralls.io/repos/github/MyLittleRobo/mimeapps/badge.svg?branch=master)](https://coveralls.io/github/MyLittleRobo/mimeapps?branch=master)
+
 See [MIME Applications Associations](https://www.freedesktop.org/wiki/Specifications/mime-apps-spec/).
 
 ## Generating documentation
