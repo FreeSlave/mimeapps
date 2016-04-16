@@ -459,7 +459,14 @@ class DesktopFileProvider : IDesktopFileProvider
 private:
     import std.datetime : SysTime;
     
-    alias Tuple!(DesktopFile, "desktopFile", SysTime, "time", string, "baseDir", SysTime, "baseDirTime") DesktopFileItem;
+    static struct DesktopFileItem
+    {
+        DesktopFile desktopFile;
+        SysTime time;
+        string baseDir;
+        SysTime baseDirTime;
+    }
+    
     alias Tuple!(string, "path", SysTime, "time", bool, "valid") BaseDirItem;
     
 public:
