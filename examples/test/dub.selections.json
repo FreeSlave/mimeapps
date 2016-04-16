@@ -1,0 +1,9 @@
+{
+	"fileVersion": 1,
+	"versions": {
+		"desktopfile": "0.9.0",
+		"isfreedesktop": "0.1.0",
+		"inilike": "0.6.1",
+		"xdgpaths": "0.2.1"
+	}
+}

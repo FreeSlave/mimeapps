@@ -20,12 +20,13 @@ private {
     import std.path;
     import std.typecons : Tuple;
     import std.traits;
+    
+    import xdgpaths;
+    import isfreedesktop;
 }
 
-import inilike.file;
-import inilike.range;
-import xdgpaths;
-import isfreedesktop;
+public import inilike.file;
+
 
 import desktopfile.file;
 
