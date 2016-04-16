@@ -1,0 +1,14 @@
+{
+    "name": "mimeapps",
+    "description": "MIME Applications Associations specification implementation",
+    "license" : "BSL-1.0",
+    "copyright": "Copyright © 2016, Roman Chistokhodov",
+    "authors": ["Roman Chistokhodov"],
+    "dependencies": {
+        "desktopfile" : "0.9.0"
+    },
+    "targetName" : "mimeapps",
+    "targetPath" : "lib", 
+    "targetType" : "library",
+    "subPackages" : ["./examples/list"]
+}
