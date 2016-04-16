@@ -18,7 +18,6 @@ private {
     import std.exception;
     import std.file;
     import std.path;
-    import std.typecons : Tuple;
     import std.traits;
     
     import xdgpaths;
@@ -467,7 +466,12 @@ private:
         SysTime baseDirTime;
     }
     
-    alias Tuple!(string, "path", SysTime, "time", bool, "valid") BaseDirItem;
+    static struct BaseDirItem
+    {
+        string path;
+        SysTime time;
+        bool valid;
+    }
     
 public:
     /**
@@ -679,6 +683,7 @@ const(DesktopFile)[] findKnownAssociatedApplications(ListRange, CacheRange)(stri
  *  mimeInfoCacheFiles = Range of MimeInfoCacheFile objects to use in searching.
  *  desktopFileProvider = desktop file provider instance.
  * Returns: Found $(B DesktopFile) or null if not found.
+ * Note: In real world you probably will need to call this function on parent MIME type if it fails for original mimeType.
  * See_Also: $(LINK2 https://specifications.freedesktop.org/mime-apps-spec/latest/ar01s04.html, Default Application)
  */
 const(DesktopFile) findDefaultApplication(ListRange, CacheRange)(string mimeType, ListRange mimeAppsListFiles, CacheRange mimeInfoCacheFiles, IDesktopFileProvider desktopFileProvider)

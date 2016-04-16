@@ -7,6 +7,5 @@
         "mimeapps" : "*"
     },
     "targetPath" : "bin",
-    "targetType" : "executable",
-    "targetName" : "mimeappslist", 
+    "targetType" : "executable"
 }

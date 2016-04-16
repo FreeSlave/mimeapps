@@ -1,10 +1,11 @@
 {
-    "name": "test",
+    "name": "open",
     "description": "A minimal D application.",
     "copyright": "Copyright © 2016, freeslave",
     "authors": ["freeslave"],
     "dependencies": {
-        "mimeapps" : "*"
+        "mimeapps" : "*",
+        "mime" : "~>0.3.2"
     },
     "targetPath" : "bin",
     "targetType" : "executable"
