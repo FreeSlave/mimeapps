@@ -25,10 +25,7 @@ private {
     import isfreedesktop;
 }
 
-public import inilike.file;
-
-
-import desktopfile.file;
+public import desktopfile.file;
 
 private @trusted auto parseMimeTypeName(String)(String name) if (is(String : const(char)[]))
 {
@@ -148,7 +145,7 @@ final class MimeAppsGroup : IniLikeGroup
      * Split string list of desktop ids into range.
      */
     static @trusted auto splitApps(string apps) {
-        return apps.splitter(";").filter!(s => !s.empty);
+        return std.algorithm.splitter(apps, ";").filter!(s => !s.empty);
     }
     
     ///
@@ -167,11 +164,7 @@ final class MimeAppsGroup : IniLikeGroup
     
 protected:
     @trusted override void validateKeyValue(string key, string value) const {
-        foreach(mimeType; key.splitter(";")) {
-            if (mimeType.length) {
-                validateMimeType(mimeType);
-            }
-        }
+        validateMimeType(key);
     }
 }
 

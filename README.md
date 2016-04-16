@@ -29,3 +29,10 @@ Also can be used for uri schemes:
 
     dub run :list -- x-scheme-handler/http
 
+### [Mimeapps test](examples/test/source/app.d)
+
+Parse all mimeapps.list and mimeinfo.cache found on the system. Reports errors to stderr.
+Use this example to check if the mimeapps library can parse all related files on your system.
+
+    dub run :test
+    
