@@ -19,6 +19,7 @@ Note: detection of file MIME type is out of the scope of **mimeapps**. You may c
 ### Missing
 
 * Adding, removing association or setting default application for MIME type.
+* Support for desktop-specific mimeapps.list files.
 
 ### Missing
 
@@ -65,3 +66,6 @@ Add option --ask to list all associated applications before opening the file.
 
     dub run :open -- --ask LICENSE_1_0.txt
 
+Pass http url to open in web browser:
+
+    dub run :open -- --ask https://github.com/MyLittleRobo/mimeapps

@@ -26,7 +26,7 @@ private {
 
 public import desktopfile.file;
 
-private @trusted auto parseMimeTypeName(String)(String name) if (is(String : const(char)[]))
+private @trusted auto parseMimeTypeName(String)(String name) if (isSomeString!String && is(ElementEncodingType!String : char))
 {
     alias Tuple!(String, "media", String, "subtype") MimeTypeName;
     
@@ -178,7 +178,7 @@ final class MimeAppsListFile : IniLikeFile
      *  $(B ErrnoException) if file could not be opened.
      *  $(B IniLikeException) if error occured while reading the file or "MIME Cache" group is missing.
      */
-    @safe this(string fileName) 
+    @trusted this(string fileName) 
     {
         this(iniLikeFileReader(fileName), fileName);
     }
@@ -188,7 +188,7 @@ final class MimeAppsListFile : IniLikeFile
      * Throws:
      *  $(B IniLikeException) if error occured while parsing or "MIME Cache" group is missing.
      */
-    @trusted this(IniLikeReader)(IniLikeReader reader, string fileName = null)
+    this(IniLikeReader)(IniLikeReader reader, string fileName = null)
     {
         super(reader, fileName);
     }
@@ -295,9 +295,24 @@ final class MimeInfoCacheFile : IniLikeFile
      *  $(B ErrnoException) if file could not be opened.
      *  $(B IniLikeException) if error occured while reading the file or "MIME Cache" group is missing.
      */
-    @safe this(string fileName) 
+    @trusted this(string fileName) 
     {
         this(iniLikeFileReader(fileName), fileName);
+    }
+    
+    /**
+     * Constructs MimeInfoCacheFile with empty MIME Cache group.
+     */
+    @safe this() {
+        super();
+        addGroup("MIME Cache");
+    }
+    
+    ///
+    unittest
+    {
+        auto micf = new MimeInfoCacheFile();
+        assert(micf.mimeCache() !is null);
     }
     
     /**
@@ -305,7 +320,7 @@ final class MimeInfoCacheFile : IniLikeFile
      * Throws:
      *  $(B IniLikeException) if error occured while parsing or "MIME Cache" group is missing.
      */
-    @trusted this(IniLikeReader)(IniLikeReader reader, string fileName = null)
+    this(IniLikeReader)(IniLikeReader reader, string fileName = null)
     {
         super(reader, fileName);
         enforce(_mimeCache !is null, new IniLikeException("No \"MIME Cache\" group", 0));
@@ -475,13 +490,15 @@ private:
     
 public:
     /**
-     * Construct using applicationsPaths.
+     * Construct using applicationsPaths. Automatically calls update.
      * Params:
      *  applicationsPaths = Paths of applications/ directories where .desktop files are stored. 
+     *  options = Options used to read desktop files.
      * These should be all known paths even if they don't exist at the time.
      */
-    this(const(string)[] applicationsPaths) {
+    @trusted this(const(string)[] applicationsPaths, DesktopFile.ReadOptions options = DesktopFile.defaultReadOptions) {
         _baseDirItems = applicationsPaths.map!(p => BaseDirItem(p, SysTime.init, false)).array;
+        _readOptions = options;
         update();
     }
     
@@ -520,7 +537,7 @@ public:
             if (filePath.length) {
                 if (item.time != modifyTime || item.baseDir != baseDirItem.path) {
                     try {
-                        auto desktopFile = new DesktopFile(filePath);
+                        auto desktopFile = new DesktopFile(filePath, _readOptions);
                         _cache[desktopId] = DesktopFileItem(desktopFile, modifyTime, baseDirItem.path, baseDirItem.time);
                     } catch(Exception e) {
                         _cache.remove(desktopId);
@@ -540,7 +557,7 @@ private:
         string filePath = findDesktopFilePath(desktopId, modifyTime, baseDirItem);
         if (filePath.length) {
             try {
-                auto desktopFile = new DesktopFile(filePath);
+                auto desktopFile = new DesktopFile(filePath, _readOptions);
                 return DesktopFileItem(desktopFile, modifyTime, baseDirItem.path, baseDirItem.time);
             } catch(Exception e) {
                 return DesktopFileItem.init;
@@ -579,6 +596,7 @@ private:
     
     DesktopFileItem[string] _cache;
     BaseDirItem[] _baseDirItems;
+    DesktopFile.ReadOptions _readOptions;
 }
 
 private enum FindAssocFlag {
@@ -681,7 +699,7 @@ const(DesktopFile)[] findKnownAssociatedApplications(ListRange, CacheRange)(stri
  *  mimeType = MIME type or uri scheme handler in question.
  *  mimeAppsListFiles = Range of MimeAppsListFile objects to use in searching.
  *  mimeInfoCacheFiles = Range of MimeInfoCacheFile objects to use in searching.
- *  desktopFileProvider = desktop file provider instance.
+ *  desktopFileProvider = desktop file provider instance. Must be non-null.
  * Returns: Found $(B DesktopFile) or null if not found.
  * Note: In real world you probably will need to call this function on parent MIME type if it fails for original mimeType.
  * See_Also: $(LINK2 https://specifications.freedesktop.org/mime-apps-spec/latest/ar01s04.html, Default Application)
