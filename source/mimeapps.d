@@ -18,15 +18,17 @@ private {
     import std.exception;
     import std.file;
     import std.path;
+    import std.range;
     import std.traits;
     
     import xdgpaths;
     import isfreedesktop;
+    import findexecutable;
 }
 
 public import desktopfile.file;
 
-private @trusted auto parseMimeTypeName(String)(String name) if (isSomeString!String && is(ElementEncodingType!String : char))
+private @nogc @trusted auto parseMimeTypeName(String)(String name) pure nothrow if (isSomeString!String && is(ElementEncodingType!String : char))
 {
     alias Tuple!(String, "media", String, "subtype") MimeTypeName;
     
@@ -492,14 +494,20 @@ public:
     /**
      * Construct using applicationsPaths. Automatically calls update.
      * Params:
-     *  applicationsPaths = Paths of applications/ directories where .desktop files are stored. 
+     *  applicationsPaths = Paths of applications/ directories where .desktop files are stored. These should be all known paths even if they don't exist at the time.
+     *  binPaths = Paths where executable files are stored.
      *  options = Options used to read desktop files.
-     * These should be all known paths even if they don't exist at the time.
      */
-    @trusted this(const(string)[] applicationsPaths, DesktopFile.ReadOptions options = DesktopFile.defaultReadOptions) {
+    @trusted this(const(string)[] applicationsPaths, in string[] binPaths, DesktopFile.ReadOptions options = DesktopFile.defaultReadOptions) {
         _baseDirItems = applicationsPaths.map!(p => BaseDirItem(p, SysTime.init, false)).array;
         _readOptions = options;
+        _binPaths = binPaths.dup;
         update();
+    }
+    
+    /// ditto, but determine binPaths from PATH environment variable automatically.
+    @trusted this(const(string)[] applicationsPaths, DesktopFile.ReadOptions options = DesktopFile.defaultReadOptions) {
+        this(applicationsPaths, binPaths().array, options);
     }
     
     override const(DesktopFile) getByDesktopId(string desktopId)
@@ -558,6 +566,14 @@ private:
         if (filePath.length) {
             try {
                 auto desktopFile = new DesktopFile(filePath, _readOptions);
+                string tryExec = desktopFile.tryExecString();
+                if (tryExec.length) {
+                    string executable = findExecutable(tryExec, binPaths);
+                    if (!executable.empty) {
+                        return DesktopFileItem.init;
+                    }
+                }
+                
                 return DesktopFileItem(desktopFile, modifyTime, baseDirItem.path, baseDirItem.time);
             } catch(Exception e) {
                 return DesktopFileItem.init;
@@ -573,14 +589,8 @@ private:
                 continue;
             }
             
-            auto filePath = buildPath(baseDirItem.path, desktopId);
-            bool fileExists = filePath.exists;
-            if (!fileExists && filePath.canFind('-')) {
-                //try subdirectory
-                filePath = buildPath(baseDirItem.path, desktopId.replace("-", "/"));
-                fileExists = filePath.exists;
-            }
-            if (fileExists) {
+            auto filePath = findDesktopFile(desktopId, only(baseDirItem.path));
+            if (filePath.length) {
                 try {
                     SysTime accessTime;
                     getTimes(filePath, accessTime, modifyTime);
@@ -597,6 +607,7 @@ private:
     DesktopFileItem[string] _cache;
     BaseDirItem[] _baseDirItems;
     DesktopFile.ReadOptions _readOptions;
+    string[] _binPaths;
 }
 
 private enum FindAssocFlag {
