@@ -14,7 +14,7 @@ void main()
     foreach(path; mimeListPaths.filter!(p => p.exists)) {
         try {
             new MimeAppsListFile(path);
-        } catch(IniLikeException e) {
+        } catch(IniLikeReadException e) {
             stderr.writefln("Error reading %s: at %s: %s", path, e.lineNumber, e.msg);
         } catch(Exception e) {
             stderr.writefln("Error reading %s: %s", path, e.msg);
@@ -24,7 +24,7 @@ void main()
     foreach(path; mimeCachePaths.filter!(p => p.exists)) {
         try {
             new MimeInfoCacheFile(path);
-        } catch(IniLikeException e) {
+        } catch(IniLikeReadException e) {
             stderr.writefln("Error reading %s: at %s: %s", path, e.lineNumber, e.msg);
         } catch(Exception e) {
             stderr.writefln("Error reading %s: %s", path, e.msg);

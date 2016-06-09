@@ -88,9 +88,9 @@ unittest
     assert(!isValidMimeTypeName("/"));
 }
 
-private @trusted void validateMimeType(string mimeType) {
+private @trusted void validateMimeType(string groupName, string mimeType, string value) {
     if (!isValidMimeTypeName(mimeType)) {
-        throw new Exception("Invalid MIME type name");
+        throw new IniLikeEntryException("Invalid MIME type name", groupName, mimeType, value);
     }
 }
 
@@ -164,8 +164,8 @@ final class MimeAppsGroup : IniLikeGroup
     }
     
 protected:
-    @trusted override void validateKeyValue(string key, string value) const {
-        validateMimeType(key);
+    @trusted override void validateKey(string key, string value) const {
+        validateMimeType(groupName(), key, value);
     }
 }
 
@@ -178,21 +178,24 @@ final class MimeAppsListFile : IniLikeFile
      * Read mimeapps.list file.
      * Throws:
      *  $(B ErrnoException) if file could not be opened.
-     *  $(B IniLikeException) if error occured while reading the file or "MIME Cache" group is missing.
+     *  $(B IniLikeReadException) if error occured while reading the file or "MIME Cache" group is missing.
      */
-    @trusted this(string fileName) 
+    @trusted this(string fileName, ReadOptions readOptions = ReadOptions.init) 
     {
-        this(iniLikeFileReader(fileName), fileName);
+        this(iniLikeFileReader(fileName), fileName, readOptions);
     }
     
     /**
      * Read MIME type associations from IniLikeReader, e.g. acquired from iniLikeFileReader or iniLikeStringReader.
      * Throws:
-     *  $(B IniLikeException) if error occured while parsing or "MIME Cache" group is missing.
+     *  $(B IniLikeReadException) if error occured while parsing or "MIME Cache" group is missing.
      */
-    this(IniLikeReader)(IniLikeReader reader, string fileName = null)
+    this(IniLikeReader)(IniLikeReader reader, string fileName = null, ReadOptions readOptions = ReadOptions.init)
     {
         super(reader, fileName);
+        _defaultApps = cast(MimeAppsGroup)group("Default Applications");
+        _addedApps = cast(MimeAppsGroup)group("Added Associations");
+        _removedApps = cast(MimeAppsGroup)group("Removed Associations");
     }
     
     /**
@@ -220,38 +223,16 @@ final class MimeAppsListFile : IniLikeFile
     }
     
 protected:
-    @trusted override void addCommentForGroup(string comment, IniLikeGroup currentGroup, string groupName) {
-        return;
-    }
-    
-    @trusted override void addKeyValueForGroup(string key, string value, IniLikeGroup currentGroup, string groupName)
+    @trusted override IniLikeGroup createGroupByName(string groupName)
     {
-        if (currentGroup) {
-            if (currentGroup.contains(key)) {
-                return;
-            }
-            currentGroup[key] = value;
-        }
-    }
-    
-    @trusted override IniLikeGroup createGroup(string groupName)
-    {
-        auto existent = group(groupName);
-        if (existent !is null) {
-            return existent;
+        if (groupName == "Default Applications") {
+            return new MimeAppsGroup(groupName);
+        } else if (groupName == "Added Associations") {
+            return new MimeAppsGroup(groupName);
+        } else if (groupName == "Removed Associations") {
+            return new MimeAppsGroup(groupName);
         } else {
-            if (groupName == "Default Applications") {
-                _defaultApps = new MimeAppsGroup(groupName);
-                return _defaultApps;
-            } else if (groupName == "Added Associations") {
-                _addedApps = new MimeAppsGroup(groupName);
-                return _addedApps;
-            } else if (groupName == "Removed Associations") {
-                _removedApps = new MimeAppsGroup(groupName);
-                return _removedApps;
-            } else {
-                return null;
-            }
+            return null;
         }
     }
     
@@ -295,11 +276,11 @@ final class MimeInfoCacheFile : IniLikeFile
      * Read MIME Cache from file.
      * Throws:
      *  $(B ErrnoException) if file could not be opened.
-     *  $(B IniLikeException) if error occured while reading the file or "MIME Cache" group is missing.
+     *  $(B IniLikeReadException) if error occured while reading the file or "MIME Cache" group is missing.
      */
-    @trusted this(string fileName) 
+    @trusted this(string fileName, ReadOptions readOptions = ReadOptions.init) 
     {
-        this(iniLikeFileReader(fileName), fileName);
+        this(iniLikeFileReader(fileName), fileName, readOptions);
     }
     
     /**
@@ -307,7 +288,8 @@ final class MimeInfoCacheFile : IniLikeFile
      */
     @safe this() {
         super();
-        addGroup("MIME Cache");
+        _mimeCache = new MimeAppsGroup("MIME Cache");
+        insertGroup(_mimeCache);
     }
     
     ///
@@ -322,10 +304,11 @@ final class MimeInfoCacheFile : IniLikeFile
      * Throws:
      *  $(B IniLikeException) if error occured while parsing or "MIME Cache" group is missing.
      */
-    this(IniLikeReader)(IniLikeReader reader, string fileName = null)
+    this(IniLikeReader)(IniLikeReader reader, string fileName = null, ReadOptions readOptions = ReadOptions.init)
     {
         super(reader, fileName);
-        enforce(_mimeCache !is null, new IniLikeException("No \"MIME Cache\" group", 0));
+        _mimeCache = cast(MimeAppsGroup)group("MIME Cache");
+        enforce(_mimeCache !is null, new IniLikeReadException("No \"MIME Cache\" group", 0));
     }
     
     /**
@@ -341,32 +324,12 @@ final class MimeInfoCacheFile : IniLikeFile
     alias mimeCache this;
 
 protected:
-    @trusted override void addCommentForGroup(string comment, IniLikeGroup currentGroup, string groupName) {
-        return;
-    }
-    
-    @trusted override void addKeyValueForGroup(string key, string value, IniLikeGroup currentGroup, string groupName)
+    @trusted override IniLikeGroup createGroupByName(string groupName)
     {
-        if (currentGroup) {
-            if (currentGroup.contains(key)) {
-                return;
-            }
-            currentGroup[key] = value;
-        }
-    }
-    
-    @trusted override IniLikeGroup createGroup(string groupName)
-    {
-        auto existent = group(groupName);
-        if (existent !is null) {
-            return existent;
+        if (groupName == "MIME Cache") {
+            return new MimeAppsGroup(groupName);
         } else {
-            if (groupName == "MIME Cache") {
-                _mimeCache = new MimeAppsGroup(groupName);
-                return _mimeCache;
-            } else {
-                return null;
-            }
+            return null;
         }
     }
 private:
@@ -380,7 +343,7 @@ unittest
 `[Some group]
 Key=Value
 `;
-    assertThrown!IniLikeException(new MimeInfoCacheFile(iniLikeStringReader(content)));
+    assertThrown!IniLikeReadException(new MimeInfoCacheFile(iniLikeStringReader(content)));
     
     content = 
 `[MIME Cache]
@@ -398,7 +361,7 @@ image/png=kde4-gwenview.desktop;gthumb.desktop;
 text/plain=geany.desktop;
 notmimetype=value
 `;
-    assertThrown!IniLikeException(new MimeInfoCacheFile(iniLikeStringReader(content)));
+    assertThrown!IniLikeReadException(new MimeInfoCacheFile(iniLikeStringReader(content)));
 }
 
 /**
@@ -451,7 +414,7 @@ static if (isFreedesktop)
 
 /**
  * Interface for desktop file provider.
- * See_Also: findAssociatedApplications, findKnownAssociatedApplications, findDefaultApplication
+ * See_Also: $(D findAssociatedApplications), $(D findKnownAssociatedApplications), $(D findDefaultApplication)
  */
 interface IDesktopFileProvider
 {
@@ -460,11 +423,6 @@ interface IDesktopFileProvider
      * Returns: Found DesktopFile or null if not found.
      */
     const(DesktopFile) getByDesktopId(string desktopId);
-    
-    /**
-     * Update internal information, e.g. re-read cached .desktop files if needed.
-     */
-    void update();
 }
 
 /**
@@ -473,40 +431,34 @@ interface IDesktopFileProvider
 class DesktopFileProvider : IDesktopFileProvider
 {
 private:
-    import std.datetime : SysTime;
-    
     static struct DesktopFileItem
     {
         DesktopFile desktopFile;
-        SysTime time;
         string baseDir;
-        SysTime baseDirTime;
     }
     
     static struct BaseDirItem
     {
         string path;
-        SysTime time;
         bool valid;
     }
     
 public:
     /**
-     * Construct using applicationsPaths. Automatically calls update.
+     * Construct using applicationsPaths.
      * Params:
      *  applicationsPaths = Paths of applications/ directories where .desktop files are stored. These should be all known paths even if they don't exist at the time.
      *  binPaths = Paths where executable files are stored.
      *  options = Options used to read desktop files.
      */
-    @trusted this(const(string)[] applicationsPaths, in string[] binPaths, DesktopFile.ReadOptions options = DesktopFile.defaultReadOptions) {
-        _baseDirItems = applicationsPaths.map!(p => BaseDirItem(p, SysTime.init, false)).array;
+    @trusted this(const(string)[] applicationsPaths, in string[] binPaths, DesktopFile.DesktopReadOptions options = DesktopFile.DesktopReadOptions.init) {
+        _baseDirItems = applicationsPaths.dup;
         _readOptions = options;
         _binPaths = binPaths.dup;
-        update();
     }
     
     /// ditto, but determine binPaths from PATH environment variable automatically.
-    @trusted this(const(string)[] applicationsPaths, DesktopFile.ReadOptions options = DesktopFile.defaultReadOptions) {
+    @trusted this(const(string)[] applicationsPaths, DesktopFile.DesktopReadOptions options = DesktopFile.DesktopReadOptions.init) {
         this(applicationsPaths, binPaths().array, options);
     }
     
@@ -524,57 +476,23 @@ public:
         }
         return null;
     }
-    
-    override void update()
-    {
-        foreach (ref item; _baseDirItems) {
-            try {
-                SysTime accessTime;
-                getTimes(item.path, accessTime, item.time);
-                item.valid = item.path.isDir();
-            } catch(Exception e) {
-                item.valid = false;
-            }
-        }
-        
-        foreach(desktopId, item; _cache) {
-            SysTime modifyTime;
-            BaseDirItem baseDirItem;
-            string filePath = findDesktopFilePath(desktopId, modifyTime, baseDirItem);
-            
-            if (filePath.length) {
-                if (item.time != modifyTime || item.baseDir != baseDirItem.path) {
-                    try {
-                        auto desktopFile = new DesktopFile(filePath, _readOptions);
-                        _cache[desktopId] = DesktopFileItem(desktopFile, modifyTime, baseDirItem.path, baseDirItem.time);
-                    } catch(Exception e) {
-                        _cache.remove(desktopId);
-                    }
-                }
-            } else {
-                _cache.remove(desktopId);
-            }
-        }
-    }
-    
 private:
     DesktopFileItem getDesktopFileItem(string desktopId)
     {
-        SysTime modifyTime;
-        BaseDirItem baseDirItem;
-        string filePath = findDesktopFilePath(desktopId, modifyTime, baseDirItem);
+        string baseDirItem;
+        string filePath = findDesktopFilePath(desktopId, baseDirItem);
         if (filePath.length) {
             try {
                 auto desktopFile = new DesktopFile(filePath, _readOptions);
-                string tryExec = desktopFile.tryExecString();
+                string tryExec = desktopFile.tryExecValue();
                 if (tryExec.length) {
                     string executable = findExecutable(tryExec, binPaths);
-                    if (!executable.empty) {
+                    if (executable.empty) {
                         return DesktopFileItem.init;
                     }
                 }
                 
-                return DesktopFileItem(desktopFile, modifyTime, baseDirItem.path, baseDirItem.time);
+                return DesktopFileItem(desktopFile, baseDirItem);
             } catch(Exception e) {
                 return DesktopFileItem.init;
             }
@@ -582,31 +500,21 @@ private:
         return DesktopFileItem.init;
     }
     
-    string findDesktopFilePath(string desktopId, out SysTime modifyTime, out BaseDirItem dirItem)
+    string findDesktopFilePath(string desktopId, out string dirItem)
     {
         foreach(baseDirItem; _baseDirItems) {
-            if (!baseDirItem.valid) {
-                continue;
-            }
-            
-            auto filePath = findDesktopFile(desktopId, only(baseDirItem.path));
+            auto filePath = findDesktopFile(desktopId, only(baseDirItem));
             if (filePath.length) {
-                try {
-                    SysTime accessTime;
-                    getTimes(filePath, accessTime, modifyTime);
-                    dirItem = baseDirItem;
-                    return filePath;
-                } catch(Exception e) {
-                    return null;
-                }
+                dirItem = baseDirItem;
+                return filePath;
             }
         }
         return null;
     }
     
     DesktopFileItem[string] _cache;
-    BaseDirItem[] _baseDirItems;
-    DesktopFile.ReadOptions _readOptions;
+    string[] _baseDirItems;
+    DesktopFile.DesktopReadOptions _readOptions;
     string[] _binPaths;
 }
 
@@ -678,6 +586,7 @@ private const(DesktopFile)[] findAssociatedApplicationsImpl(ListRange, CacheRang
  *  mimeInfoCacheFiles = Range of MimeInfoCacheFile objects to use in searching.
  *  desktopFileProvider = desktop file provider instance.
  * Returns: Array of found $(B DesktopFile) object capable of opening file of given MIME type or url of given scheme.
+ * Note: If no applications found for this mimeType, you may consider to use this function on parent MIME type.
  * See_Also: $(LINK2 https://specifications.freedesktop.org/mime-apps-spec/latest/ar01s03.html, Adding/removing associations)
  */
 const(DesktopFile)[] findAssociatedApplications(ListRange, CacheRange)(string mimeType, ListRange mimeAppsListFiles, CacheRange mimeInfoCacheFiles, IDesktopFileProvider desktopFileProvider)
@@ -712,7 +621,7 @@ const(DesktopFile)[] findKnownAssociatedApplications(ListRange, CacheRange)(stri
  *  mimeInfoCacheFiles = Range of MimeInfoCacheFile objects to use in searching.
  *  desktopFileProvider = desktop file provider instance. Must be non-null.
  * Returns: Found $(B DesktopFile) or null if not found.
- * Note: In real world you probably will need to call this function on parent MIME type if it fails for original mimeType.
+ * Note: You probably will need to call this function on parent MIME type if it fails for original mimeType.
  * See_Also: $(LINK2 https://specifications.freedesktop.org/mime-apps-spec/latest/ar01s04.html, Default Application)
  */
 const(DesktopFile) findDefaultApplication(ListRange, CacheRange)(string mimeType, ListRange mimeAppsListFiles, CacheRange mimeInfoCacheFiles, IDesktopFileProvider desktopFileProvider)
