@@ -96,6 +96,29 @@ private @trusted void validateMimeType(string groupName, string mimeType, string
 
 static if (isFreedesktop)
 {
+    version(unittest) {
+        import std.process : environment;
+        
+        package struct EnvGuard
+        {
+            this(string env) {
+                envVar = env;
+                envValue = environment.get(env);
+            }
+            
+            ~this() {
+                if (envValue is null) {
+                    environment.remove(envVar);
+                } else {
+                    environment[envVar] = envValue;
+                }
+            }
+            
+            string envVar;
+            string envValue;
+        }
+    }
+    
     /**
      * Find all known mimeapps.list files locations. Found paths are not checked for existence.
      * Returns: Paths of mimeapps.list files in the system.
@@ -122,6 +145,27 @@ static if (isFreedesktop)
         return toReturn ~ configPaths ~ appPaths;
     }
     
+    ///
+    unittest
+    {
+        auto dataHomeGuard = EnvGuard("XDG_DATA_HOME");
+        auto dataDirsGuard = EnvGuard("XDG_DATA_DIRS");
+        
+        auto configHomeGuard = EnvGuard("XDG_CONFIG_HOME");
+        auto configDirsGuard = EnvGuard("XDG_CONFIG_DIRS");
+        
+        environment["XDG_DATA_HOME"] = "/home/user/data";
+        environment["XDG_DATA_DIRS"] = "/usr/local/data:/usr/data";
+        
+        environment["XDG_CONFIG_HOME"] = "/home/user/config";
+        environment["XDG_CONFIG_DIRS"] = "/etc/xdg";
+        
+        assert(mimeAppsListPaths() == [
+            "/home/user/config/mimeapps.list", "/home/user/data/applications/mimeapps.list", "/etc/xdg/mimeapps.list",
+            "/usr/local/data/applications/mimeapps.list", "/usr/data/applications/mimeapps.list"
+        ]);
+    }
+    
     /**
      * Find all known mimeinfo.cache files locations. Found paths are not checked for existence.
      * Returns: Paths of mimeinfo.cache files in the system.
@@ -130,6 +174,21 @@ static if (isFreedesktop)
     @safe string[] mimeInfoCachePaths() nothrow
     {
         return xdgAllDataDirs("applications/mimeinfo.cache");
+    }
+    
+    ///
+    unittest
+    {
+        auto dataHomeGuard = EnvGuard("XDG_DATA_HOME");
+        auto dataDirsGuard = EnvGuard("XDG_DATA_DIRS");
+        
+        environment["XDG_DATA_HOME"] = "/home/user/data";
+        environment["XDG_DATA_DIRS"] = "/usr/local/data:/usr/data";
+        
+        assert(mimeInfoCachePaths() == [
+            "/home/user/data/applications/mimeinfo.cache", 
+            "/usr/local/data/applications/mimeinfo.cache", "/usr/data/applications/mimeinfo.cache"
+        ]);
     }
 }
 
@@ -437,12 +496,6 @@ private:
         string baseDir;
     }
     
-    static struct BaseDirItem
-    {
-        string path;
-        bool valid;
-    }
-    
 public:
     /**
      * Construct using applicationsPaths.
@@ -451,8 +504,8 @@ public:
      *  binPaths = Paths where executable files are stored.
      *  options = Options used to read desktop files.
      */
-    @trusted this(const(string)[] applicationsPaths, in string[] binPaths, DesktopFile.DesktopReadOptions options = DesktopFile.DesktopReadOptions.init) {
-        _baseDirItems = applicationsPaths.dup;
+    @trusted this(in string[] applicationsPaths, in string[] binPaths, DesktopFile.DesktopReadOptions options = DesktopFile.DesktopReadOptions.init) {
+        _baseDirs = applicationsPaths.dup;
         _readOptions = options;
         _binPaths = binPaths.dup;
     }
@@ -479,8 +532,8 @@ public:
 private:
     DesktopFileItem getDesktopFileItem(string desktopId)
     {
-        string baseDirItem;
-        string filePath = findDesktopFilePath(desktopId, baseDirItem);
+        string baseDir;
+        string filePath = findDesktopFilePath(desktopId, baseDir);
         if (filePath.length) {
             try {
                 auto desktopFile = new DesktopFile(filePath, _readOptions);
@@ -492,7 +545,7 @@ private:
                     }
                 }
                 
-                return DesktopFileItem(desktopFile, baseDirItem);
+                return DesktopFileItem(desktopFile, baseDir);
             } catch(Exception e) {
                 return DesktopFileItem.init;
             }
@@ -500,12 +553,12 @@ private:
         return DesktopFileItem.init;
     }
     
-    string findDesktopFilePath(string desktopId, out string dirItem)
+    string findDesktopFilePath(string desktopId, out string dir)
     {
-        foreach(baseDirItem; _baseDirItems) {
-            auto filePath = findDesktopFile(desktopId, only(baseDirItem));
+        foreach(baseDir; _baseDirs) {
+            auto filePath = findDesktopFile(desktopId, only(baseDir));
             if (filePath.length) {
-                dirItem = baseDirItem;
+                dir = baseDir;
                 return filePath;
             }
         }
@@ -513,7 +566,7 @@ private:
     }
     
     DesktopFileItem[string] _cache;
-    string[] _baseDirItems;
+    string[] _baseDirs;
     DesktopFile.DesktopReadOptions _readOptions;
     string[] _binPaths;
 }
@@ -599,6 +652,18 @@ body {
     return findAssociatedApplicationsImpl(mimeType, mimeAppsListFiles, mimeInfoCacheFiles, desktopFileProvider);
 }
 
+///
+unittest
+{
+    auto desktopProvider = new DesktopFileProvider(["test/applications"]);
+    auto mimeAppsList = new MimeAppsListFile("test/applications/mimeapps.list");
+    auto mimeInfoCache = new MimeInfoCacheFile("test/applications/mimeinfo.cache");
+    assert(findAssociatedApplications("text/plain", [null, mimeAppsList], [null, mimeInfoCache], desktopProvider)
+        .map!(d => d.displayName()).equal(["Geany", "Kate", "Emacs"]));
+    assert(findAssociatedApplications("application/nonexistent", [mimeAppsList], [mimeInfoCache], desktopProvider).length == 0);
+    assert(findAssociatedApplications("application/x-data", [mimeAppsList], [mimeInfoCache], desktopProvider).length == 0);
+}
+
 /**
  * Find all known associated applications for mimeType, including explicitly removed by user.
  * Params:
@@ -609,8 +674,21 @@ body {
  * Returns: Array of found $(B DesktopFile) object capable of opening file of given MIME type or url of given scheme.
  */
 const(DesktopFile)[] findKnownAssociatedApplications(ListRange, CacheRange)(string mimeType, ListRange mimeAppsListFiles, CacheRange mimeInfoCacheFiles, IDesktopFileProvider desktopFileProvider)
-{
+in {
+    assert(desktopFileProvider !is null);
+}
+body {
     return findAssociatedApplicationsImpl(mimeType, mimeAppsListFiles, mimeInfoCacheFiles, desktopFileProvider, FindAssocFlag.ignoreRemovedGroup);
+}
+
+///
+unittest
+{
+    auto desktopProvider = new DesktopFileProvider(["test/applications"]);
+    auto mimeAppsList = new MimeAppsListFile("test/applications/mimeapps.list");
+    auto mimeInfoCache = new MimeInfoCacheFile("test/applications/mimeinfo.cache");
+    assert(findKnownAssociatedApplications("text/plain", [null, mimeAppsList], [null, mimeInfoCache], desktopProvider)
+        .map!(d => d.displayName()).equal(["Geany", "Kate", "Emacs", "Okular"]));
 }
 
 /**
@@ -648,4 +726,17 @@ body {
     
     auto desktopFiles = findAssociatedApplicationsImpl(mimeType, mimeAppsListFiles, mimeInfoCacheFiles, desktopFileProvider, FindAssocFlag.onlyFirst);
     return desktopFiles.length ? desktopFiles.front : null;
+}
+
+///
+unittest
+{
+    auto desktopProvider = new DesktopFileProvider(["test/applications"]);
+    auto mimeAppsList = new MimeAppsListFile("test/applications/mimeapps.list");
+    auto mimeInfoCache = new MimeInfoCacheFile("test/applications/mimeinfo.cache");
+    assert(findDefaultApplication("text/plain", [null, mimeAppsList], [null, mimeInfoCache], desktopProvider).displayName() == "Geany");
+    assert(findDefaultApplication("image/png", [mimeAppsList], [mimeInfoCache], desktopProvider).displayName() == "Gwenview");
+    assert(findDefaultApplication("application/pdf", [mimeAppsList], [mimeInfoCache], desktopProvider).displayName() == "Okular");
+    assert(findDefaultApplication("application/nonexistent", [mimeAppsList], [mimeInfoCache], desktopProvider) is null);
+    assert(findDefaultApplication("application/x-data", [mimeAppsList], [mimeInfoCache], desktopProvider) is null);
 }

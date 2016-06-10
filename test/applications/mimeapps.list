@@ -1,0 +1,9 @@
+[Default Applications]
+text/plain=geany.desktop
+
+[Added Associations]
+application/pdf=okular.desktop;
+text/plain=geany.desktop;kate.desktop;kate.desktop;
+
+[Removed Associations]
+text/plain=okular.desktop
