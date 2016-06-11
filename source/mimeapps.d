@@ -214,12 +214,28 @@ final class MimeAppsGroup : IniLikeGroup
         assert(splitApps("kde4-kate.desktop;kde4-kwrite.desktop;geany.desktop;").equal(["kde4-kate.desktop", "kde4-kwrite.desktop", "geany.desktop"]));
     }
     
+    static @trusted string joinApps(Range)(Range apps) if (isInputRange!Range && is(ElementType!Range : string))
+    {
+        auto result = apps.filter!( s => !s.empty ).joiner(";");
+        if (result.empty) {
+            return null;
+        } else {
+            return text(result) ~ ";";
+        }
+    }
+    
+    ///
+    unittest
+    {
+        assert(joinApps(["kde4-kate.desktop", "kde4-kwrite.desktop", "geany.desktop"]) == "kde4-kate.desktop;kde4-kwrite.desktop;geany.desktop;");
+    }
+    
     /**
      * List applications for given mimeType.
      * Returns: Range of $(B Desktop id)s for mimeType.
      */
     @safe auto appsForMimeType(string mimeType) const {
-        return splitApps(value(mimeType));
+        return splitApps(readEntry(mimeType));
     }
     
 protected:
@@ -257,6 +273,11 @@ final class MimeAppsListFile : IniLikeFile
         _removedApps = cast(MimeAppsGroup)group("Removed Associations");
     }
     
+    this()
+    {
+        super();
+    }
+    
     /**
      * Access "Desktop Applications" group.
      * Returns: MimeAppsGroup for "Desktop Applications" group or null if file does not have such group.
@@ -281,6 +302,171 @@ final class MimeAppsListFile : IniLikeFile
         return _removedApps;
     }
     
+    /**
+     * Set desktopId as default application for mimeType. 
+     * Set it as first element in the list of added associations.
+     * Delete it from removed associations if listed.
+     * Note: This only changes the object, but not file itself.
+     */
+    @safe void setDefaultApplication(string mimeType, string desktopId)
+    {
+        if (mimeType.empty || desktopId.empty) {
+            return;
+        }
+        ensureDefaultApplications();
+        _defaultApps.writeEntry(mimeType, desktopId);
+        ensureAddedAssociations();
+        auto added = _addedApps.appsForMimeType(mimeType);
+        auto withoutThis = added.filter!(d => d != desktopId);
+        auto resorted = only(desktopId).chain(withoutThis);
+        _addedApps.writeEntry(mimeType, MimeAppsGroup.joinApps(resorted));
+        
+        if (_removedApps !is null) {
+            removeAssocFromGroup(_removedApps, mimeType, desktopId);
+        }
+    }
+    
+    ///
+    unittest
+    {
+        MimeAppsListFile appsList = new MimeAppsListFile();
+        appsList.setDefaultApplication("text/plain", "geany.desktop");
+        assert(appsList.defaultApplications() !is null);
+        assert(appsList.addedAssociations() !is null);
+        assert(appsList.defaultApplications().appsForMimeType("text/plain").equal(["geany.desktop"]));
+        assert(appsList.addedAssociations().appsForMimeType("text/plain").equal(["geany.desktop"]));
+        
+        string contents = 
+`[Default Applications]
+text/plain=kde4-kate.desktop`;
+
+        appsList = new MimeAppsListFile(iniLikeStringReader(contents));
+        appsList.setDefaultApplication("text/plain", "geany.desktop");
+        assert(appsList.defaultApplications().appsForMimeType("text/plain").equal(["geany.desktop"]));
+        assert(appsList.addedAssociations().appsForMimeType("text/plain").equal(["geany.desktop"]));
+        
+        contents = 
+`[Default Applications]
+text/plain=kde4-kate.desktop
+[Added Associations]
+text/plain=kde4-kate.desktop;emacs.desktop;`;
+
+        appsList = new MimeAppsListFile(iniLikeStringReader(contents));
+        appsList.setDefaultApplication("text/plain", "geany.desktop");
+        assert(appsList.defaultApplications().appsForMimeType("text/plain").equal(["geany.desktop"]));
+        assert(appsList.addedAssociations().appsForMimeType("text/plain").equal(["geany.desktop", "kde4-kate.desktop", "emacs.desktop"]));
+        
+        contents = 
+`[Default Applications]
+text/plain=emacs.desktop
+[Added Associations]
+text/plain=emacs.desktop;kde4-kate.desktop;geany.desktop;`;
+
+        appsList = new MimeAppsListFile(iniLikeStringReader(contents));
+        appsList.setDefaultApplication("text/plain", "geany.desktop");
+        assert(appsList.defaultApplications().appsForMimeType("text/plain").equal(["geany.desktop"]));
+        assert(appsList.addedAssociations().appsForMimeType("text/plain").equal(["geany.desktop", "emacs.desktop", "kde4-kate.desktop"]));
+        
+        contents = 
+`[Default Applications]
+text/plain=emacs.desktop
+[Added Associations]
+text/plain=emacs.desktop;kde4-kate.desktop;
+[Removed Associations]
+text/plain=kde4-okular.desktop;geany.desktop`;
+
+        appsList = new MimeAppsListFile(iniLikeStringReader(contents));
+        appsList.setDefaultApplication("text/plain", "geany.desktop");
+        assert(appsList.removedAssociations() !is null);
+        assert(appsList.defaultApplications().appsForMimeType("text/plain").equal(["geany.desktop"]));
+        assert(appsList.addedAssociations().appsForMimeType("text/plain").equal(["geany.desktop", "emacs.desktop", "kde4-kate.desktop"]));
+        assert(appsList.removedAssociations().appsForMimeType("text/plain").equal(["kde4-okular.desktop"]));
+    }
+    
+    /**
+     * Add desktopId as association for mimeType.
+     * Delete it from removed associations if listed.
+     * Note: This only changes the object, but not file itself.
+     */
+    @safe void addAssociation(string mimeType, string desktopId)
+    {
+        if (mimeType.empty || desktopId.empty) {
+            return;
+        }
+        ensureAddedAssociations();
+        auto added = _addedApps.appsForMimeType(mimeType);
+        if (!added.canFind(desktopId)) {
+            _addedApps.writeEntry(mimeType, MimeAppsGroup.joinApps(chain(added, only(desktopId))));
+        }
+        if (_removedApps) {
+            removeAssocFromGroup(_removedApps, mimeType, desktopId);
+        }
+    }
+    
+    ///
+    unittest
+    {
+        MimeAppsListFile appsList = new MimeAppsListFile();
+        appsList.addAssociation("text/plain", "geany.desktop");
+        assert(appsList.addedAssociations() !is null);
+        assert(appsList.addedAssociations().appsForMimeType("text/plain").equal(["geany.desktop"]));
+        
+        string contents = 
+`[Added Associations]
+text/plain=kde4-kate.desktop;emacs.desktop
+[Removed Associations]
+text/plain=kde4-okular.desktop;geany.desktop`;
+
+        appsList = new MimeAppsListFile(iniLikeStringReader(contents));
+        appsList.addAssociation("text/plain", "geany.desktop");
+        assert(appsList.addedAssociations().appsForMimeType("text/plain").equal(["kde4-kate.desktop", "emacs.desktop", "geany.desktop"]));
+        assert(appsList.removedAssociations().appsForMimeType("text/plain").equal(["kde4-okular.desktop"]));
+    }
+    
+    /**
+     * Explicitly remove desktopId association for mimeType.
+     * Delete it from added associations and default applications.
+     * Note: This only changes the object, but not file itself.
+     */
+    @safe void removeAssociation(string mimeType, string desktopId)
+    {
+        if (mimeType.empty || desktopId.empty) {
+            return;
+        }
+        ensureRemovedAssociations();
+        auto removed = _removedApps.appsForMimeType(mimeType);
+        if (!removed.canFind(desktopId)) {
+            _removedApps.writeEntry(mimeType, MimeAppsGroup.joinApps(chain(removed, only(desktopId))));
+        }
+        if (_addedApps) {
+            removeAssocFromGroup(_addedApps, mimeType, desktopId);
+        }
+        if (_defaultApps) {
+            removeAssocFromGroup(_defaultApps, mimeType, desktopId);
+        }
+    }
+    
+    ///
+    unittest
+    {
+        MimeAppsListFile appsList = new MimeAppsListFile();
+        appsList.removeAssociation("text/plain", "geany.desktop");
+        assert(appsList.removedAssociations() !is null);
+        assert(appsList.removedAssociations().appsForMimeType("text/plain").equal(["geany.desktop"]));
+        
+        string contents = 
+`[Default Applications]
+text/plain=geany.desktop
+[Added Associations]
+text/plain=emacs.desktop;geany.desktop;kde4-kate.desktop;`;
+
+        appsList = new MimeAppsListFile(iniLikeStringReader(contents));
+        appsList.removeAssociation("text/plain", "geany.desktop");
+        assert(appsList.removedAssociations().appsForMimeType("text/plain").equal(["geany.desktop"]));
+        assert(appsList.addedAssociations().appsForMimeType("text/plain").equal(["emacs.desktop", "kde4-kate.desktop"]));
+        assert(!appsList.defaultApplications().contains("text/plain"));
+    }
+    
 protected:
     @trusted override IniLikeGroup createGroupByName(string groupName)
     {
@@ -292,6 +478,48 @@ protected:
             return new MimeAppsGroup(groupName);
         } else {
             return null;
+        }
+    }
+    
+    @trusted final void ensureDefaultApplications()
+    {
+        if (_defaultApps is null) {
+            auto group = new MimeAppsGroup("Default Applications");
+            insertGroup(group);
+            _defaultApps = group;
+        }
+    }
+    
+    @trusted final void ensureAddedAssociations()
+    {
+        if (_addedApps is null) {
+            auto group = new MimeAppsGroup("Added Associations");
+            insertGroup(group);
+            _addedApps = group;
+        }
+    }
+    
+    @trusted final void ensureRemovedAssociations()
+    {
+        if (_removedApps is null) {
+            auto group = new MimeAppsGroup("Removed Associations");
+            insertGroup(group);
+            _removedApps = group;
+        }
+    }
+    
+    @trusted final void removeAssocFromGroup(MimeAppsGroup group, string mimeType, string desktopId)
+    {
+        if (group.contains(mimeType)) {
+            auto apps = group.appsForMimeType(mimeType);
+            if (apps.canFind(desktopId)) {
+                auto without = apps.filter!(d => d != desktopId);
+                if (without.empty) {
+                    group.removeEntry(mimeType);
+                } else {
+                    group.writeEntry(mimeType, MimeAppsGroup.joinApps(without));
+                }
+            }
         }
     }
     
