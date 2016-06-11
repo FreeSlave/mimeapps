@@ -308,7 +308,7 @@ final class MimeAppsListFile : IniLikeFile
      * Delete it from removed associations if listed.
      * Note: This only changes the object, but not file itself.
      */
-    @safe void setDefaultApplication(string mimeType, string desktopId)
+    @trusted void setDefaultApplication(string mimeType, string desktopId)
     {
         if (mimeType.empty || desktopId.empty) {
             return;
@@ -388,7 +388,7 @@ text/plain=kde4-okular.desktop;geany.desktop`;
      * Delete it from removed associations if listed.
      * Note: This only changes the object, but not file itself.
      */
-    @safe void addAssociation(string mimeType, string desktopId)
+    @trusted void addAssociation(string mimeType, string desktopId)
     {
         if (mimeType.empty || desktopId.empty) {
             return;
@@ -428,7 +428,7 @@ text/plain=kde4-okular.desktop;geany.desktop`;
      * Delete it from added associations and default applications.
      * Note: This only changes the object, but not file itself.
      */
-    @safe void removeAssociation(string mimeType, string desktopId)
+    @trusted void removeAssociation(string mimeType, string desktopId)
     {
         if (mimeType.empty || desktopId.empty) {
             return;
