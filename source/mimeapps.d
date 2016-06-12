@@ -259,7 +259,7 @@ final class MimeAppsGroup : IniLikeGroup
     /**
      * Delete desktopId from the list of desktop ids for mimeType.
      */
-    @safe void deleteAssociation(string mimeType, string desktopId)
+    @trusted void deleteAssociation(string mimeType, string desktopId)
     {
         auto appsStr = readEntry(mimeType);
         if (appsStr.length) {
