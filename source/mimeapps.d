@@ -119,6 +119,28 @@ static if (isFreedesktop)
         }
     }
     
+    private enum mimeAppsList = "mimeapps.list";
+    private enum applicationsMimeAppsList = "applications/mimeapps.list";
+    
+    /**
+     * Find all writable mimeapps.list files locations. Found paths are not checked for existence.
+     * Note: This function is available only on Freedesktop.
+     * See_Also: $(D mimeAppsListPaths)
+     */
+    @safe string[] writableMimeAppsListPaths() nothrow 
+    {
+        string configHome = xdgConfigHome(mimeAppsList);
+        string appHome = xdgDataHome(applicationsMimeAppsList);
+        string[] toReturn;
+        if (configHome.length) {
+            toReturn ~= configHome;
+        }
+        if (appHome.length) {
+            toReturn ~= appHome;
+        }
+        return toReturn;
+    }
+    
     /**
      * Find all known mimeapps.list files locations. Found paths are not checked for existence.
      * Returns: Paths of mimeapps.list files in the system.
@@ -127,22 +149,9 @@ static if (isFreedesktop)
      */
     @safe string[] mimeAppsListPaths() nothrow
     {
-        enum mimeAppsList = "mimeapps.list";
-        enum applicationsMimeAppsList = "applications/mimeapps.list";
-        string configHome = xdgConfigHome(mimeAppsList);
-        string appHome = xdgDataHome(applicationsMimeAppsList);
-        
         string[] configPaths = xdgConfigDirs(mimeAppsList);
         string[] appPaths = xdgDataDirs(applicationsMimeAppsList);
-        
-        string[] toReturn;
-        if (configHome.length) {
-            toReturn ~= configHome;
-        }
-        if (appHome.length) {
-            toReturn ~= appHome;
-        }
-        return toReturn ~ configPaths ~ appPaths;
+        return writableMimeAppsListPaths() ~ configPaths ~ appPaths;
     }
     
     ///
@@ -203,6 +212,7 @@ final class MimeAppsGroup : IniLikeGroup
     
     /**
      * Split string list of desktop ids into range.
+     * See_Also: $(D joinApps)
      */
     static @trusted auto splitApps(string apps) {
         return std.algorithm.splitter(apps, ";").filter!(s => !s.empty);
@@ -214,13 +224,17 @@ final class MimeAppsGroup : IniLikeGroup
         assert(splitApps("kde4-kate.desktop;kde4-kwrite.desktop;geany.desktop;").equal(["kde4-kate.desktop", "kde4-kwrite.desktop", "geany.desktop"]));
     }
     
-    static @trusted string joinApps(Range)(Range apps) if (isInputRange!Range && is(ElementType!Range : string))
+    /**
+     * Join list of desktop ids into string.
+     * See_Also: $(D splitApps)
+     */
+    static @trusted string joinApps(Range)(Range apps, bool trailingSemicolon = true) if (isInputRange!Range && is(ElementType!Range : string))
     {
         auto result = apps.filter!( s => !s.empty ).joiner(";");
         if (result.empty) {
             return null;
         } else {
-            return text(result) ~ ";";
+            return text(result) ~ (trailingSemicolon ? ";" : "");
         }
     }
     
@@ -228,6 +242,10 @@ final class MimeAppsGroup : IniLikeGroup
     unittest
     {
         assert(joinApps(["kde4-kate.desktop", "kde4-kwrite.desktop", "geany.desktop"]) == "kde4-kate.desktop;kde4-kwrite.desktop;geany.desktop;");
+        assert(joinApps((string[]).init) == string.init);
+        assert(joinApps(["geany.desktop"], false) == "geany.desktop");
+        assert(joinApps(["geany.desktop"], true) == "geany.desktop;");
+        assert(joinApps((string[]).init, true) == string.init);
     }
     
     /**
@@ -236,6 +254,35 @@ final class MimeAppsGroup : IniLikeGroup
      */
     @safe auto appsForMimeType(string mimeType) const {
         return splitApps(readEntry(mimeType));
+    }
+    
+    /**
+     * Delete desktopId from the list of desktop ids for mimeType.
+     */
+    @safe void deleteAssociation(string mimeType, string desktopId)
+    {
+        auto appsStr = readEntry(mimeType);
+        if (appsStr.length) {
+            const bool hasSemicolon = appsStr[$-1] == ';';
+            auto apps = splitApps(appsStr);
+            if (apps.canFind(desktopId)) {
+                auto without = apps.filter!(d => d != desktopId);
+                if (without.empty) {
+                    removeEntry(mimeType);
+                } else {
+                    writeEntry(mimeType, MimeAppsGroup.joinApps(without, hasSemicolon));
+                }
+            }
+        }
+    }
+    
+    /**
+     * Set list of desktop ids for mimeType. This overwrites existing list completely.
+     * Can be used to set the list of added assocations rearranged in client code to manage the preference order.
+     */
+    @safe void setAssocations(Range)(string mimeType, Range desktopIds) if (isInputRange!Range && is(ElementType!Range : string))
+    {
+        writeEntry(mimeType, joinApps(desktopIds));
     }
     
 protected:
@@ -267,7 +314,7 @@ final class MimeAppsListFile : IniLikeFile
      */
     this(IniLikeReader)(IniLikeReader reader, string fileName = null, ReadOptions readOptions = ReadOptions.init)
     {
-        super(reader, fileName);
+        super(reader, fileName, readOptions);
         _defaultApps = cast(MimeAppsGroup)group("Default Applications");
         _addedApps = cast(MimeAppsGroup)group("Added Associations");
         _removedApps = cast(MimeAppsGroup)group("Removed Associations");
@@ -279,24 +326,27 @@ final class MimeAppsListFile : IniLikeFile
     }
     
     /**
-     * Access "Desktop Applications" group.
+     * Access "Desktop Applications" group of default associations.
      * Returns: MimeAppsGroup for "Desktop Applications" group or null if file does not have such group.
+     * See_Also: $(D addedAssociations)
      */
     @safe inout(MimeAppsGroup) defaultApplications() nothrow inout {
         return _defaultApps;
     }
     
     /**
-     * Access "Added Associations" group.
+     * Access "Added Associations" group of explicitly added associations.
      * Returns: MimeAppsGroup for "Added Associations" group or null if file does not have such group.
+     * See_Also: $(D defaultApplications), $(D removedAssociations)
      */
     @safe inout(MimeAppsGroup) addedAssociations() nothrow inout {
         return _addedApps;
     }
     
     /**
-     * Access "Removed Associations" group.
+     * Access "Removed Associations" group of explicitily removed associations.
      * Returns: MimeAppsGroup for "Removed Associations" group or null if file does not have such group.
+     * See_Also: $(D addedAssociations)
      */
     @safe inout(MimeAppsGroup) removedAssociations() nothrow inout {
         return _removedApps;
@@ -322,7 +372,7 @@ final class MimeAppsListFile : IniLikeFile
         _addedApps.writeEntry(mimeType, MimeAppsGroup.joinApps(resorted));
         
         if (_removedApps !is null) {
-            removeAssocFromGroup(_removedApps, mimeType, desktopId);
+            _removedApps.deleteAssociation(mimeType, desktopId);
         }
     }
     
@@ -335,6 +385,9 @@ final class MimeAppsListFile : IniLikeFile
         assert(appsList.addedAssociations() !is null);
         assert(appsList.defaultApplications().appsForMimeType("text/plain").equal(["geany.desktop"]));
         assert(appsList.addedAssociations().appsForMimeType("text/plain").equal(["geany.desktop"]));
+        
+        appsList.setDefaultApplication("image/png", null);
+        assert(!appsList.defaultApplications().contains("image/png"));
         
         string contents = 
 `[Default Applications]
@@ -399,7 +452,7 @@ text/plain=kde4-okular.desktop;geany.desktop`;
             _addedApps.writeEntry(mimeType, MimeAppsGroup.joinApps(chain(added, only(desktopId))));
         }
         if (_removedApps) {
-            removeAssocFromGroup(_removedApps, mimeType, desktopId);
+            _removedApps.deleteAssociation(mimeType, desktopId);
         }
     }
     
@@ -411,16 +464,28 @@ text/plain=kde4-okular.desktop;geany.desktop`;
         assert(appsList.addedAssociations() !is null);
         assert(appsList.addedAssociations().appsForMimeType("text/plain").equal(["geany.desktop"]));
         
+        appsList.addAssociation("image/png", null);
+        assert(!appsList.addedAssociations().contains("image/png"));
+        
         string contents = 
 `[Added Associations]
 text/plain=kde4-kate.desktop;emacs.desktop
 [Removed Associations]
-text/plain=kde4-okular.desktop;geany.desktop`;
+text/plain=kde4-okular.desktop;geany.desktop;`;
 
         appsList = new MimeAppsListFile(iniLikeStringReader(contents));
         appsList.addAssociation("text/plain", "geany.desktop");
         assert(appsList.addedAssociations().appsForMimeType("text/plain").equal(["kde4-kate.desktop", "emacs.desktop", "geany.desktop"]));
         assert(appsList.removedAssociations().appsForMimeType("text/plain").equal(["kde4-okular.desktop"]));
+        
+        contents = 
+`[Removed Associations]
+text/plain=geany.desktop;`;
+
+        appsList = new MimeAppsListFile(iniLikeStringReader(contents));
+        appsList.addAssociation("text/plain", "geany.desktop");
+        assert(appsList.addedAssociations().appsForMimeType("text/plain").equal(["geany.desktop"]));
+        assert(!appsList.removedAssociations().contains("text/plain"));
     }
     
     /**
@@ -439,11 +504,22 @@ text/plain=kde4-okular.desktop;geany.desktop`;
             _removedApps.writeEntry(mimeType, MimeAppsGroup.joinApps(chain(removed, only(desktopId))));
         }
         if (_addedApps) {
-            removeAssocFromGroup(_addedApps, mimeType, desktopId);
+            _addedApps.deleteAssociation(mimeType, desktopId);
         }
         if (_defaultApps) {
-            removeAssocFromGroup(_defaultApps, mimeType, desktopId);
+            _defaultApps.deleteAssociation(mimeType, desktopId);
         }
+    }
+    
+    /**
+     * Set list of desktop ids as assocations for mimeType. This overwrites existing assocations.
+     * Note: This only changes the object, but not file itself.
+     * See_Also: $(D MimeAppsGroup.setAssocations)
+     */
+    @trusted void setAddedAssocations(Range)(string mimeType, Range desktopIds) if (isInputRange!Range && is(ElementType!Range : string))
+    {
+        ensureAddedAssociations();
+        _addedApps.setAssocations(mimeType, desktopIds);
     }
     
     ///
@@ -453,6 +529,9 @@ text/plain=kde4-okular.desktop;geany.desktop`;
         appsList.removeAssociation("text/plain", "geany.desktop");
         assert(appsList.removedAssociations() !is null);
         assert(appsList.removedAssociations().appsForMimeType("text/plain").equal(["geany.desktop"]));
+        
+        appsList.removeAssociation("image/png", null);
+        assert(!appsList.removedAssociations().contains("image/png"));
         
         string contents = 
 `[Default Applications]
@@ -465,6 +544,30 @@ text/plain=emacs.desktop;geany.desktop;kde4-kate.desktop;`;
         assert(appsList.removedAssociations().appsForMimeType("text/plain").equal(["geany.desktop"]));
         assert(appsList.addedAssociations().appsForMimeType("text/plain").equal(["emacs.desktop", "kde4-kate.desktop"]));
         assert(!appsList.defaultApplications().contains("text/plain"));
+        
+        contents = 
+`[Added Associations]
+text/plain=geany.desktop;`;
+        
+        appsList = new MimeAppsListFile(iniLikeStringReader(contents));
+        appsList.removeAssociation("text/plain", "geany.desktop");
+        assert(appsList.removedAssociations().appsForMimeType("text/plain").equal(["geany.desktop"]));
+        assert(!appsList.addedAssociations().contains("text/plain"));
+    }
+    
+    ///Create empty "Default Applications" group if it does not exist.
+    @trusted final void ensureDefaultApplications() {
+        ensureGroupExists(_defaultApps, "Default Applications");
+    }
+    
+    ///Create empty "Added Associations" group if it does not exist.
+    @trusted final void ensureAddedAssociations() {
+        ensureGroupExists(_addedApps, "Added Associations");
+    }
+    
+    ///Create empty "Removed Associations" group if it does not exist.
+    @trusted final void ensureRemovedAssociations() {
+        ensureGroupExists(_removedApps, "Removed Associations");
     }
     
 protected:
@@ -480,50 +583,15 @@ protected:
             return null;
         }
     }
-    
-    @trusted final void ensureDefaultApplications()
-    {
-        if (_defaultApps is null) {
-            auto group = new MimeAppsGroup("Default Applications");
-            insertGroup(group);
-            _defaultApps = group;
-        }
-    }
-    
-    @trusted final void ensureAddedAssociations()
-    {
-        if (_addedApps is null) {
-            auto group = new MimeAppsGroup("Added Associations");
-            insertGroup(group);
-            _addedApps = group;
-        }
-    }
-    
-    @trusted final void ensureRemovedAssociations()
-    {
-        if (_removedApps is null) {
-            auto group = new MimeAppsGroup("Removed Associations");
-            insertGroup(group);
-            _removedApps = group;
-        }
-    }
-    
-    @trusted final void removeAssocFromGroup(MimeAppsGroup group, string mimeType, string desktopId)
-    {
-        if (group.contains(mimeType)) {
-            auto apps = group.appsForMimeType(mimeType);
-            if (apps.canFind(desktopId)) {
-                auto without = apps.filter!(d => d != desktopId);
-                if (without.empty) {
-                    group.removeEntry(mimeType);
-                } else {
-                    group.writeEntry(mimeType, MimeAppsGroup.joinApps(without));
-                }
-            }
-        }
-    }
-    
 private:
+    @trusted final void ensureGroupExists(ref MimeAppsGroup group, string name)
+    {
+        if (group is null) {
+            group = new MimeAppsGroup(name);
+            insertGroup(group);
+        }
+    }
+    
     MimeAppsGroup _addedApps;
     MimeAppsGroup _removedApps;
     MimeAppsGroup _defaultApps;
@@ -543,11 +611,15 @@ text/plain=libreoffice-writer.desktop;
 [Default Applications]
 text/plain=kde4-kate.desktop
 x-scheme-handler/http=chromium.desktop;iceweasel.desktop;
-`;
+
+
+[Unknown group]
+Key=Value`;
     auto mimeAppsList = new MimeAppsListFile(iniLikeStringReader(content));
     assert(mimeAppsList.addedAssociations() !is null);
     assert(mimeAppsList.removedAssociations() !is null);
     assert(mimeAppsList.defaultApplications() !is null);
+    assert(mimeAppsList.group("Unknown group") is null);
     
     assert(mimeAppsList.addedAssociations().appsForMimeType("text/plain").equal(["geany.desktop", "kde4-kwrite.desktop"]));
     assert(mimeAppsList.removedAssociations().appsForMimeType("text/plain").equal(["libreoffice-writer.desktop"]));
@@ -967,4 +1039,128 @@ unittest
     assert(findDefaultApplication("application/pdf", [mimeAppsList], [mimeInfoCache], desktopProvider).displayName() == "Okular");
     assert(findDefaultApplication("application/nonexistent", [mimeAppsList], [mimeInfoCache], desktopProvider) is null);
     assert(findDefaultApplication("application/x-data", [mimeAppsList], [mimeInfoCache], desktopProvider) is null);
+}
+
+/**
+ * Struct used for construction of file assocation update query.
+ * This allows to reuse the same query many times or for many mimeapps.list files.
+ */
+struct AssociationUpdateQuery
+{
+    /**
+     * Operation on MIME type application assocication.
+     */
+    static struct Operation
+    {
+        ///Type of operation
+        enum Type : ubyte {
+            add,
+            remove,
+            setDefault,
+            setAdded
+        }
+        
+        string mimeType;
+        string desktopId;
+        Type type;
+    }
+
+    /**
+     * See_Also: $(D mimeAppsList.addAssociation)
+     */
+    @safe ref typeof(this) addAssociation(string mimeType, string desktopId) nothrow
+    {
+        _operations ~= Operation(mimeType, desktopId, Operation.Type.add);
+        return this;
+    }
+    /**
+     * See_Also: $(D mimeAppsList.setAddedAssocations)
+     */
+    @safe ref typeof(this) setAddedAssocations(Range)(string mimeType, Range desktopIds) if (isInputRange!Range && is(ElementType!Range : string))
+    {
+        _operations ~= Operation(mimeType, MimeAppsGroup.joinApps(desktopIds), Operation.Type.setAdded);
+        return this;
+    }
+    /**
+     * See_Also: $(D mimeAppsList.removeAssociation)
+     */
+    @safe ref typeof(this) removeAssociation(string mimeType, string desktopId) nothrow
+    {
+        _operations ~= Operation(mimeType, desktopId, Operation.Type.remove);
+        return this;
+    }
+    /**
+     * See_Also: $(D mimeAppsList.setDefaultApplication)
+     */
+    @safe ref typeof(this) setDefaultApplication(string mimeType, string desktopId) nothrow
+    {
+        _operations ~= Operation(mimeType, desktopId, Operation.Type.setDefault);
+        return this;
+    }
+    
+    /**
+     * Apply query to MimeAppsListFile.
+     */
+    void apply(MimeAppsListFile file) const
+    {
+        foreach(op; _operations)
+        {
+            final switch(op.type)
+            {
+                case Operation.Type.add:
+                    file.addAssociation(op.mimeType, op.desktopId);
+                    break;
+                case Operation.Type.remove:
+                    file.removeAssociation(op.mimeType, op.desktopId);
+                    break;
+                case Operation.Type.setDefault:
+                    file.setDefaultApplication(op.mimeType, op.desktopId);
+                    break;
+                case Operation.Type.setAdded:
+                    file.setAddedAssocations(op.mimeType, MimeAppsGroup.splitApps(op.desktopId));
+                    break;
+            }
+        }
+    }
+private:
+    Operation[] _operations;
+}
+
+///
+unittest
+{
+    AssociationUpdateQuery query;
+    query.addAssociation("text/plain", "geany.desktop");
+    query.removeAssociation("text/plain", "kde4-okular.desktop");
+    query.setDefaultApplication("text/plain", "kde4-kate.desktop");
+    query.setAddedAssocations("image/png", ["kde4-gwenview.desktop", "gthumb.desktop"]);
+    
+    auto file = new MimeAppsListFile();
+    query.apply(file);
+    file.addedAssociations().appsForMimeType("text/plain").equal(["kde4-kate.desktop", "geany.desktop"]);
+    file.defaultApplications().appsForMimeType("text/plain").equal(["kde4-kate.desktop"]);
+    file.removedAssociations().appsForMimeType("text/plain").equal(["kde4-okular.desktop"]);
+    file.addedAssociations().appsForMimeType("image/png").equal(["kde4-gwenview.desktop", "gthumb.desktop"]);
+}
+
+void updateAssociations(string fileName, ref AssociationUpdateQuery query)
+{
+    MimeAppsListFile file;
+    if (fileName.exists) {
+        file = new MimeAppsListFile(fileName);
+    } else {
+        file = new MimeAppsListFile();
+    }
+    query.apply(file);
+    file.saveToFile(fileName);
+}
+
+static if (isFreedesktop)
+{
+    void updateAssociations(ref AssociationUpdateQuery query)
+    {
+        foreach(fileName; writableMimeAppsListPaths()) {
+            updateAssociations(fileName, query);
+        }
+    }
 }
