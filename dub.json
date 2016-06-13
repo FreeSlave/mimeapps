@@ -10,5 +10,5 @@
     "targetName" : "mimeapps",
     "targetPath" : "lib", 
     "targetType" : "library",
-    "subPackages" : ["./examples/list", "./examples/test", "./examples/open"]
+    "subPackages" : ["./examples/list", "./examples/test", "./examples/open", "./examples/update"]
 }

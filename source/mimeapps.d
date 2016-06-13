@@ -1143,6 +1143,10 @@ unittest
     file.addedAssociations().appsForMimeType("image/png").equal(["kde4-gwenview.desktop", "gthumb.desktop"]);
 }
 
+/**
+ * Apply query for file with fileName. This should be mimeapps.list file.
+ * If file does not exist it will be created.
+ */
 void updateAssociations(string fileName, ref AssociationUpdateQuery query)
 {
     MimeAppsListFile file;
@@ -1157,6 +1161,14 @@ void updateAssociations(string fileName, ref AssociationUpdateQuery query)
 
 static if (isFreedesktop)
 {
+    /**
+     * Apply query for writable mimeapps.list files. 
+     * For compatibility purposes this overwrites both $XDG_CONFIG_HOME/mimeapps.list and $XDG_DATA_HOME/applications/mimeapps.list
+     * See_Also: $(D writableMimeAppsListPaths)
+     * Warning: Since this library is in development this function should be used with care. 
+     *  Developer can't guarantee yet that it will not damage your file associations settings.
+     * Note: This function is available only on freedesktop.
+     */
     void updateAssociations(ref AssociationUpdateQuery query)
     {
         foreach(fileName; writableMimeAppsListPaths()) {

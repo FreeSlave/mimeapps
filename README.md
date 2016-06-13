@@ -69,3 +69,11 @@ Add option --ask to list all associated applications before opening the file.
 Pass http url to open in web browser:
 
     dub run :open -- --ask https://github.com/MyLittleRobo/mimeapps
+
+### [Mimeapps update](examples/update/source/app.d)
+
+Update mimeapps.list file. Since this library is in development, don't use this example to update file associations on your system. 
+Better make copy first.
+
+    cp $HOME/.config/mimeapps.list /tmp/mimeapps.list
+    dub run :update -- --file=/tmp/mimeapps.list --remove=text/plain:kde4-kwrite.desktop --add=image/jpeg:gthumb.desktop --default=application/pdf:kde4-okular.desktop
