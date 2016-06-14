@@ -637,6 +637,9 @@ notmimetype=value
 
 /**
  * Class represenation of single mimeinfo.cache file containing information about MIME type associations.
+ * Note: Unlike $(D MimeAppsListFile) this class does not provide functions for associations update. 
+ *  This is because mimeinfo.cache files should be updated by $(B update-desktop-database) utility from 
+ *  $(LINK2 https://www.freedesktop.org/wiki/Software/desktop-file-utils/, desktop-file-utils).
  */
 final class MimeInfoCacheFile : IniLikeFile
 {    
@@ -747,10 +750,16 @@ notmimetype=value
     }).filter!(file => file !is null).array;
 }
 
+///
+unittest
+{
+    assert(mimeAppsListFiles(["test/applications/mimeapps.list"]).length == 1);
+}
+
 static if (isFreedesktop)
 {
     /**
-     * ditto, but automatically read MimeAppsListFile objects from determined system paths.
+     * ditto, but automatically read $(D MimeAppsListFile) objects from determined system paths.
      * Note: Available only on Freedesktop.
      */
     @safe MimeAppsListFile[] mimeAppsListFiles() nothrow {
@@ -771,6 +780,12 @@ static if (isFreedesktop)
     }).filter!(file => file !is null).array;
 }
 
+///
+unittest
+{
+    assert(mimeInfoCacheFiles(["test/applications/mimeinfo.cache"]).length == 1);
+}
+
 static if (isFreedesktop)
 {
     /**
@@ -789,8 +804,8 @@ static if (isFreedesktop)
 interface IDesktopFileProvider
 {
     /**
-     * Retrieve DesktopFile by desktopId
-     * Returns: Found DesktopFile or null if not found.
+     * Retrieve $(B DesktopFile) by desktopId
+     * Returns: Found $(B DesktopFile) or null if not found.
      */
     const(DesktopFile) getByDesktopId(string desktopId);
 }
@@ -826,6 +841,7 @@ public:
         this(applicationsPaths, binPaths().array, options);
     }
     
+    ///
     override const(DesktopFile) getByDesktopId(string desktopId)
     {
         auto itemIn = desktopId in _cache;
@@ -946,9 +962,9 @@ private const(DesktopFile)[] findAssociatedApplicationsImpl(ListRange, CacheRang
  * Find associated applications for mimeType.
  * Params:
  *  mimeType = MIME type or uri scheme handler in question.
- *  mimeAppsListFiles = Range of MimeAppsListFile objects to use in searching.
- *  mimeInfoCacheFiles = Range of MimeInfoCacheFile objects to use in searching.
- *  desktopFileProvider = desktop file provider instance.
+ *  mimeAppsListFiles = Range of $(D MimeAppsListFile) objects to use in searching.
+ *  mimeInfoCacheFiles = Range of $(D MimeInfoCacheFile) objects to use in searching.
+ *  desktopFileProvider = Desktop file provider instance.
  * Returns: Array of found $(B DesktopFile) object capable of opening file of given MIME type or url of given scheme.
  * Note: If no applications found for this mimeType, you may consider to use this function on parent MIME type.
  * See_Also: $(LINK2 https://specifications.freedesktop.org/mime-apps-spec/latest/ar01s03.html, Adding/removing associations)
@@ -979,9 +995,9 @@ unittest
  * Find all known associated applications for mimeType, including explicitly removed by user.
  * Params:
  *  mimeType = MIME type or uri scheme handler in question.
- *  mimeAppsListFiles = Range of MimeAppsListFile objects to use in searching.
- *  mimeInfoCacheFiles = Range of MimeInfoCacheFile objects to use in searching.
- *  desktopFileProvider = desktop file provider instance.
+ *  mimeAppsListFiles = Range of $(D MimeAppsListFile) objects to use in searching.
+ *  mimeInfoCacheFiles = Range of $(D MimeInfoCacheFile) objects to use in searching.
+ *  desktopFileProvider = Desktop file provider instance.
  * Returns: Array of found $(B DesktopFile) object capable of opening file of given MIME type or url of given scheme.
  */
 const(DesktopFile)[] findKnownAssociatedApplications(ListRange, CacheRange)(string mimeType, ListRange mimeAppsListFiles, CacheRange mimeInfoCacheFiles, IDesktopFileProvider desktopFileProvider)
@@ -1006,9 +1022,9 @@ unittest
  * Find default application for mimeType.
  * Params:
  *  mimeType = MIME type or uri scheme handler in question.
- *  mimeAppsListFiles = Range of MimeAppsListFile objects to use in searching.
- *  mimeInfoCacheFiles = Range of MimeInfoCacheFile objects to use in searching.
- *  desktopFileProvider = desktop file provider instance. Must be non-null.
+ *  mimeAppsListFiles = Range of $(D MimeAppsListFile) objects to use in searching.
+ *  mimeInfoCacheFiles = Range of $(D MimeInfoCacheFile) objects to use in searching.
+ *  desktopFileProvider = Desktop file provider instance. Must be non-null.
  * Returns: Found $(B DesktopFile) or null if not found.
  * Note: You probably will need to call this function on parent MIME type if it fails for original mimeType.
  * See_Also: $(LINK2 https://specifications.freedesktop.org/mime-apps-spec/latest/ar01s04.html, Default Application)
@@ -1077,7 +1093,7 @@ struct AssociationUpdateQuery
     }
 
     /**
-     * See_Also: $(D mimeAppsList.addAssociation)
+     * See_Also: $(D MimeAppsListFile.addAssociation)
      */
     @safe ref typeof(this) addAssociation(string mimeType, string desktopId) nothrow
     {
@@ -1085,7 +1101,7 @@ struct AssociationUpdateQuery
         return this;
     }
     /**
-     * See_Also: $(D mimeAppsList.setAddedAssocations)
+     * See_Also: $(D MimeAppsListFile.setAddedAssocations)
      */
     @safe ref typeof(this) setAddedAssocations(Range)(string mimeType, Range desktopIds) if (isInputRange!Range && is(ElementType!Range : string))
     {
@@ -1093,7 +1109,7 @@ struct AssociationUpdateQuery
         return this;
     }
     /**
-     * See_Also: $(D mimeAppsList.removeAssociation)
+     * See_Also: $(D MimeAppsListFile.removeAssociation)
      */
     @safe ref typeof(this) removeAssociation(string mimeType, string desktopId) nothrow
     {
@@ -1101,7 +1117,7 @@ struct AssociationUpdateQuery
         return this;
     }
     /**
-     * See_Also: $(D mimeAppsList.setDefaultApplication)
+     * See_Also: $(D MimeAppsListFile.setDefaultApplication)
      */
     @safe ref typeof(this) setDefaultApplication(string mimeType, string desktopId) nothrow
     {
@@ -1110,7 +1126,7 @@ struct AssociationUpdateQuery
     }
     
     /**
-     * Apply query to MimeAppsListFile.
+     * Apply query to $(D MimeAppsListFile).
      */
     @safe void apply(MimeAppsListFile file) const
     {
@@ -1157,6 +1173,9 @@ unittest
 /**
  * Apply query for file with fileName. This should be mimeapps.list file.
  * If file does not exist it will be created.
+ * Throws:
+ *   $(D IniLikeReadException) if errors occured duting reading of file.
+ *   $(B ErrnoException) if errors occured during file writing.
  */
 @trusted void updateAssociations(string fileName, ref AssociationUpdateQuery query)
 {
