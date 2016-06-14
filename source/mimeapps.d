@@ -624,6 +624,15 @@ Key=Value`;
     assert(mimeAppsList.addedAssociations().appsForMimeType("text/plain").equal(["geany.desktop", "kde4-kwrite.desktop"]));
     assert(mimeAppsList.removedAssociations().appsForMimeType("text/plain").equal(["libreoffice-writer.desktop"]));
     assert(mimeAppsList.defaultApplications().appsForMimeType("x-scheme-handler/http").equal(["chromium.desktop", "iceweasel.desktop"]));
+    
+    content =
+`[Default Applications]
+text/plain=geany.desktop
+notmimetype=value
+`;
+    assertThrown!IniLikeReadException(new MimeAppsListFile(iniLikeStringReader(content)));
+    assertNotThrown(mimeAppsList = new MimeAppsListFile(iniLikeStringReader(content), null, IniLikeFile.ReadOptions(IniLikeGroup.InvalidKeyPolicy.save)));
+    assert(mimeAppsList.defaultApplications().value("notmimetype") == "value");
 }
 
 /**
@@ -665,7 +674,7 @@ final class MimeInfoCacheFile : IniLikeFile
      */
     this(IniLikeReader)(IniLikeReader reader, string fileName = null, ReadOptions readOptions = ReadOptions.init)
     {
-        super(reader, fileName);
+        super(reader, fileName, readOptions);
         _mimeCache = cast(MimeAppsGroup)group("MIME Cache");
         enforce(_mimeCache !is null, new IniLikeReadException("No \"MIME Cache\" group", 0));
     }
@@ -721,6 +730,8 @@ text/plain=geany.desktop;
 notmimetype=value
 `;
     assertThrown!IniLikeReadException(new MimeInfoCacheFile(iniLikeStringReader(content)));
+    assertNotThrown(mimeInfoCache = new MimeInfoCacheFile(iniLikeStringReader(content), null, IniLikeFile.ReadOptions(IniLikeGroup.InvalidKeyPolicy.save)));
+    assert(mimeInfoCache.value("notmimetype") == "value");
 }
 
 /**
@@ -1101,7 +1112,7 @@ struct AssociationUpdateQuery
     /**
      * Apply query to MimeAppsListFile.
      */
-    void apply(MimeAppsListFile file) const
+    @safe void apply(MimeAppsListFile file) const
     {
         foreach(op; _operations)
         {
@@ -1147,7 +1158,7 @@ unittest
  * Apply query for file with fileName. This should be mimeapps.list file.
  * If file does not exist it will be created.
  */
-void updateAssociations(string fileName, ref AssociationUpdateQuery query)
+@trusted void updateAssociations(string fileName, ref AssociationUpdateQuery query)
 {
     MimeAppsListFile file;
     if (fileName.exists) {
@@ -1169,7 +1180,7 @@ static if (isFreedesktop)
      *  Developer can't guarantee yet that it will not damage your file associations settings.
      * Note: This function is available only on freedesktop.
      */
-    void updateAssociations(ref AssociationUpdateQuery query)
+    @safe void updateAssociations(ref AssociationUpdateQuery query)
     {
         foreach(fileName; writableMimeAppsListPaths()) {
             updateAssociations(fileName, query);
