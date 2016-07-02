@@ -124,7 +124,8 @@ static if (isFreedesktop)
     
     /**
      * Find all writable mimeapps.list files locations. Found paths are not checked for existence.
-     * Note: This function is available only on Freedesktop.
+     * 
+     * $(BLUE This function is Freedesktop only).
      * See_Also: $(D mimeAppsListPaths)
      */
     @safe string[] writableMimeAppsListPaths() nothrow 
@@ -143,8 +144,9 @@ static if (isFreedesktop)
     
     /**
      * Find all known mimeapps.list files locations. Found paths are not checked for existence.
+     * 
+     * $(BLUE This function is Freedesktop only).
      * Returns: Paths of mimeapps.list files in the system.
-     * Note: This function is available only on Freedesktop.
      * See_Also: $(LINK2 https://specifications.freedesktop.org/mime-apps-spec/latest/ar01s02.html, File name and location)
      */
     @safe string[] mimeAppsListPaths() nothrow
@@ -177,8 +179,9 @@ static if (isFreedesktop)
     
     /**
      * Find all known mimeinfo.cache files locations. Found paths are not checked for existence.
+     * 
+     * $(BLUE This function is Freedesktop only).
      * Returns: Paths of mimeinfo.cache files in the system.
-     * Note: This function is available only on Freedesktop.
      */
     @safe string[] mimeInfoCachePaths() nothrow
     {
@@ -760,7 +763,8 @@ static if (isFreedesktop)
 {
     /**
      * ditto, but automatically read $(D MimeAppsListFile) objects from determined system paths.
-     * Note: Available only on Freedesktop.
+     * 
+     * $(BLUE This function is Freedesktop only).
      */
     @safe MimeAppsListFile[] mimeAppsListFiles() nothrow {
         return mimeAppsListFiles(mimeAppsListPaths());
@@ -790,7 +794,8 @@ static if (isFreedesktop)
 {
     /**
      * ditto, but automatically read MimeInfoCacheFile objects from determined system paths.
-     * Note: Available only on Freedesktop.
+     * 
+     * $(BLUE This function is Freedesktop only).
      */
     @safe MimeInfoCacheFile[] mimeInfoCacheFiles() nothrow {
         return mimeInfoCacheFiles(mimeInfoCachePaths());
@@ -811,7 +816,7 @@ interface IDesktopFileProvider
 }
 
 /**
- * Implementation of desktop file provider.
+ * Implementation of simple desktop file provider.
  */
 class DesktopFileProvider : IDesktopFileProvider
 {
@@ -837,11 +842,16 @@ public:
     }
     
     /// ditto, but determine binPaths from PATH environment variable automatically.
-    @trusted this(const(string)[] applicationsPaths, DesktopFile.DesktopReadOptions options = DesktopFile.DesktopReadOptions.init) {
+    @trusted this(in string[] applicationsPaths, DesktopFile.DesktopReadOptions options = DesktopFile.DesktopReadOptions.init) {
         this(applicationsPaths, binPaths().array, options);
     }
     
-    ///
+    /**
+     * Get DesktopFile by desktop id.
+     * This implementation searches applicationsPaths given in constructor to find, parse and cache .desktop file.
+     * If found file has TryExec value it also checks if executable can be find in binPaths. 
+     * Note: Exec value is left unchecked.
+     */
     override const(DesktopFile) getByDesktopId(string desktopId)
     {
         auto itemIn = desktopId in _cache;
@@ -904,10 +914,11 @@ private enum FindAssocFlag {
     ignoreRemovedGroup = 2
 }
 
-private const(DesktopFile)[] findAssociatedApplicationsImpl(ListRange, CacheRange)(string mimeType, ListRange mimeAppsListFiles, CacheRange mimeInfoCacheFiles, IDesktopFileProvider desktopFileProvider, FindAssocFlag flag = FindAssocFlag.none)
+private string[] listAssociatedApplicationsImpl(ListRange, CacheRange)(string mimeType, ListRange mimeAppsListFiles, CacheRange mimeInfoCacheFiles, FindAssocFlag flag = FindAssocFlag.none)
 {
     string[] removed;
-    const(DesktopFile)[] desktopFiles;
+    string[] desktopIds;
+    
     foreach(mimeAppsListFile; mimeAppsListFiles) {
         if (mimeAppsListFile is null) {
             continue;
@@ -920,17 +931,10 @@ private const(DesktopFile)[] findAssociatedApplicationsImpl(ListRange, CacheRang
         auto addedAppsGroup = mimeAppsListFile.addedAssociations();
         if (addedAppsGroup !is null) {
             foreach(desktopId; addedAppsGroup.appsForMimeType(mimeType)) {
-                if (removed.canFind(desktopId)) {
+                if (removed.canFind(desktopId) || desktopIds.canFind(desktopId)) {
                     continue;
                 }
-                auto desktopFile = desktopFileProvider.getByDesktopId(desktopId);
-                if (desktopFile) {
-                    if (flag & FindAssocFlag.onlyFirst) {
-                        return [desktopFile];
-                    }
-                    desktopFiles ~= desktopFile;
-                }
-                removed ~= desktopId;
+                desktopIds ~= desktopId;
             }
         }
     }
@@ -941,21 +945,88 @@ private const(DesktopFile)[] findAssociatedApplicationsImpl(ListRange, CacheRang
         }
         
         foreach(desktopId; mimeInfoCacheFile.appsForMimeType(mimeType)) {
-            if (removed.canFind(desktopId)) {
+            if (removed.canFind(desktopId) || desktopIds.canFind(desktopId)) {
                 continue;
             }
-            auto desktopFile = desktopFileProvider.getByDesktopId(desktopId);
-            if (desktopFile) {
-                if (flag & FindAssocFlag.onlyFirst) {
-                    return [desktopFile];
-                }
-                desktopFiles ~= desktopFile;
-            }
-            removed ~= desktopId;
+            desktopIds ~= desktopId;
         }
     }
     
+    return desktopIds;
+}
+
+private const(DesktopFile)[] findAssociatedApplicationsImpl(ListRange, CacheRange)(string mimeType, ListRange mimeAppsListFiles, CacheRange mimeInfoCacheFiles, IDesktopFileProvider desktopFileProvider, FindAssocFlag flag = FindAssocFlag.none)
+{
+    const(DesktopFile)[] desktopFiles;
+    foreach(desktopId; listAssociatedApplicationsImpl(mimeType, mimeAppsListFiles, mimeInfoCacheFiles, flag)) {
+        auto desktopFile = desktopFileProvider.getByDesktopId(desktopId);
+        if (desktopFile && desktopFile.value("Exec").length != 0) {
+            if (flag & FindAssocFlag.onlyFirst) {
+                return [desktopFile];
+            }
+            desktopFiles ~= desktopFile;
+        }
+    }
     return desktopFiles;
+}
+/**
+ * List associated applications for mimeType.
+ * Params:
+ *  mimeType = MIME type or uri scheme handler in question.
+ *  mimeAppsListFiles = Range of $(D MimeAppsListFile) objects to use in searching.
+ *  mimeInfoCacheFiles = Range of $(D MimeInfoCacheFile) objects to use in searching.
+ * Returns: Array of desktop ids of applications that are capable of opening of given MIME type or url of given scheme.
+ * Note: It does not check if returned desktop ids point to valid .desktop files.
+ * See_Also: $(D findAssociatedApplications)
+ */
+string[] listAssociatedApplications(ListRange, CacheRange)(string mimeType, ListRange mimeAppsListFiles, CacheRange mimeInfoCacheFiles) if(isForwardRange!ListRange && is(ElementType!ListRange : const(MimeAppsListFile)) 
+    && isForwardRange!CacheRange && is(ElementType!CacheRange : const(MimeInfoCacheFile)))
+{
+    return listAssociatedApplicationsImpl(mimeType, mimeAppsListFiles, mimeInfoCacheFiles);
+}
+
+/**
+ * List all known associated applications for mimeType, including explicitly removed by user.
+ * Params:
+ *  mimeType = MIME type or uri scheme handler in question.
+ *  mimeAppsListFiles = Range of $(D MimeAppsListFile) objects to use in searching.
+ *  mimeInfoCacheFiles = Range of $(D MimeInfoCacheFile) objects to use in searching.
+ * Returns: Array of desktop ids of applications that are capable of opening of given MIME type or url of given scheme.
+ * Note: It does not check if returned desktop ids point to valid .desktop files.
+ * See_Also: $(D listAssociatedApplications), $(D findKnownAssociatedApplications)
+ */
+string[] listKnownAssociatedApplications(ListRange, CacheRange)(string mimeType, ListRange mimeAppsListFiles, CacheRange mimeInfoCacheFiles) 
+if(isForwardRange!ListRange && is(ElementType!ListRange : const(MimeAppsListFile)) 
+    && isForwardRange!CacheRange && is(ElementType!CacheRange : const(MimeInfoCacheFile)))
+{
+    return listAssociatedApplicationsImpl(mimeType, mimeAppsListFiles, mimeInfoCacheFiles, FindAssocFlag.ignoreRemovedGroup);
+}
+
+/**
+ * List explicitily set default applications for mimeType.
+ * Params:
+ *  mimeType = MIME type or uri scheme handler in question.
+ *  mimeAppsListFiles = Range of $(D MimeAppsListFile) objects to use in searching.
+ * Returns: Array of desktop ids of default applications.
+ * Note: It does not check if returned desktop ids point to valid .desktop files.
+ * See_Also: $(D findDefaultApplication)
+ */
+string[] listDefaultApplications(ListRange)(string mimeType, ListRange mimeAppsListFiles)
+if(isForwardRange!ListRange && is(ElementType!ListRange : const(MimeAppsListFile)))
+{
+    string[] defaultApplications;
+    foreach(mimeAppsListFile; mimeAppsListFiles) {
+        if (mimeAppsListFile is null) {
+            continue;
+        }
+        auto defaultAppsGroup = mimeAppsListFile.defaultApplications();
+        if (defaultAppsGroup !is null) {
+            foreach(desktopId; defaultAppsGroup.appsForMimeType(mimeType)) {
+                defaultApplications ~= desktopId;
+            }
+        }
+    }
+    return defaultApplications;
 }
 
 /**
@@ -964,10 +1035,10 @@ private const(DesktopFile)[] findAssociatedApplicationsImpl(ListRange, CacheRang
  *  mimeType = MIME type or uri scheme handler in question.
  *  mimeAppsListFiles = Range of $(D MimeAppsListFile) objects to use in searching.
  *  mimeInfoCacheFiles = Range of $(D MimeInfoCacheFile) objects to use in searching.
- *  desktopFileProvider = Desktop file provider instance.
- * Returns: Array of found $(B DesktopFile) object capable of opening file of given MIME type or url of given scheme.
+ *  desktopFileProvider = Desktop file provider instance. Must be non-null.
+ * Returns: Array of found $(B DesktopFile) objects capable of opening file of given MIME type or url of given scheme.
  * Note: If no applications found for this mimeType, you may consider to use this function on parent MIME type.
- * See_Also: $(LINK2 https://specifications.freedesktop.org/mime-apps-spec/latest/ar01s03.html, Adding/removing associations)
+ * See_Also: $(LINK2 https://specifications.freedesktop.org/mime-apps-spec/latest/ar01s03.html, Adding/removing associations), $(D findKnownAssociatedApplications), $(D listAssociatedApplications)
  */
 const(DesktopFile)[] findAssociatedApplications(ListRange, CacheRange)(string mimeType, ListRange mimeAppsListFiles, CacheRange mimeInfoCacheFiles, IDesktopFileProvider desktopFileProvider)
 if(isForwardRange!ListRange && is(ElementType!ListRange : const(MimeAppsListFile)) 
@@ -997,10 +1068,13 @@ unittest
  *  mimeType = MIME type or uri scheme handler in question.
  *  mimeAppsListFiles = Range of $(D MimeAppsListFile) objects to use in searching.
  *  mimeInfoCacheFiles = Range of $(D MimeInfoCacheFile) objects to use in searching.
- *  desktopFileProvider = Desktop file provider instance.
- * Returns: Array of found $(B DesktopFile) object capable of opening file of given MIME type or url of given scheme.
+ *  desktopFileProvider = Desktop file provider instance. Must be non-null.
+ * Returns: Array of found $(B DesktopFile) objects capable of opening file of given MIME type or url of given scheme.
+ * See_Also: $(D findAssociatedApplications), $(D listKnownAssociatedApplications)
  */
-const(DesktopFile)[] findKnownAssociatedApplications(ListRange, CacheRange)(string mimeType, ListRange mimeAppsListFiles, CacheRange mimeInfoCacheFiles, IDesktopFileProvider desktopFileProvider)
+const(DesktopFile)[] findKnownAssociatedApplications(ListRange, CacheRange)(string mimeType, ListRange mimeAppsListFiles, CacheRange mimeInfoCacheFiles, IDesktopFileProvider desktopFileProvider) 
+if(isForwardRange!ListRange && is(ElementType!ListRange : const(MimeAppsListFile)) 
+    && isForwardRange!CacheRange && is(ElementType!CacheRange : const(MimeInfoCacheFile)))
 in {
     assert(desktopFileProvider !is null);
 }
@@ -1036,18 +1110,10 @@ in {
     assert(desktopFileProvider !is null);
 }
 body {
-    foreach(mimeAppsListFile; mimeAppsListFiles) {
-        if (mimeAppsListFile is null) {
-            continue;
-        }
-        auto defaultAppsGroup = mimeAppsListFile.defaultApplications();
-        if (defaultAppsGroup !is null) {
-            foreach(desktopId; defaultAppsGroup.appsForMimeType(mimeType)) {
-                auto desktopFile = desktopFileProvider.getByDesktopId(desktopId);
-                if (desktopFile !is null) {
-                    return desktopFile;
-                }
-            }
+    foreach(desktopId; listDefaultApplications(mimeType, mimeAppsListFiles)) {
+        auto desktopFile = desktopFileProvider.getByDesktopId(desktopId);
+        if (desktopFile !is null && desktopFile.value("Exec").length != 0) {
+            return desktopFile;
         }
     }
     
@@ -1193,11 +1259,13 @@ static if (isFreedesktop)
 {
     /**
      * Apply query for writable mimeapps.list files. 
-     * For compatibility purposes this overwrites both $XDG_CONFIG_HOME/mimeapps.list and $XDG_DATA_HOME/applications/mimeapps.list
+     * 
+     * For compatibility purposes this overwrites both $XDG_CONFIG_HOME/mimeapps.list and $XDG_DATA_HOME/applications/mimeapps.list.
+     * 
+     * $(BLUE This function is Freedesktop only).
      * See_Also: $(D writableMimeAppsListPaths)
-     * Warning: Since this library is in development this function should be used with care. 
-     *  Developer can't guarantee yet that it will not damage your file associations settings.
-     * Note: This function is available only on freedesktop.
+     * Warning: $(RED Since this library is in development this function should be used with care. 
+     *  Developer can't guarantee yet that it will not damage your file associations settings.)
      */
     @safe void updateAssociations(ref AssociationUpdateQuery query)
     {
