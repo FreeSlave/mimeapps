@@ -205,7 +205,7 @@ static if (isFreedesktop)
 }
 
 /**
- * IniLikeGroup subclass for easy access to the list of applications associated with given type.
+ * $(D inilike.file.IniLikeGroup) subclass for easy access to the list of applications associated with given type.
  */
 final class MimeAppsGroup : IniLikeGroup
 {
@@ -303,7 +303,7 @@ final class MimeAppsListFile : IniLikeFile
      * Read mimeapps.list file.
      * Throws:
      *  $(B ErrnoException) if file could not be opened.
-     *  $(B IniLikeReadException) if error occured while reading the file or "MIME Cache" group is missing.
+     *  $(D inilike.file.IniLikeReadException) if error occured while reading the file or "MIME Cache" group is missing.
      */
     @trusted this(string fileName, ReadOptions readOptions = ReadOptions.init) 
     {
@@ -313,7 +313,7 @@ final class MimeAppsListFile : IniLikeFile
     /**
      * Read MIME type associations from IniLikeReader, e.g. acquired from iniLikeFileReader or iniLikeStringReader.
      * Throws:
-     *  $(B IniLikeReadException) if error occured while parsing or "MIME Cache" group is missing.
+     *  $(D inilike.file.IniLikeReadException) if error occured while parsing or "MIME Cache" group is missing.
      */
     this(IniLikeReader)(IniLikeReader reader, string fileName = null, ReadOptions readOptions = ReadOptions.init)
     {
@@ -650,7 +650,7 @@ final class MimeInfoCacheFile : IniLikeFile
      * Read MIME Cache from file.
      * Throws:
      *  $(B ErrnoException) if file could not be opened.
-     *  $(B IniLikeReadException) if error occured while reading the file or "MIME Cache" group is missing.
+     *  $(D inilike.file.IniLikeReadException) if error occured while reading the file or "MIME Cache" group is missing.
      */
     @trusted this(string fileName, ReadOptions readOptions = ReadOptions.init) 
     {
@@ -676,7 +676,7 @@ final class MimeInfoCacheFile : IniLikeFile
     /**
      * Read MIME Cache from IniLikeReader, e.g. acquired from iniLikeFileReader or iniLikeStringReader.
      * Throws:
-     *  $(B IniLikeException) if error occured while parsing or "MIME Cache" group is missing.
+     *  $(D inilike.file.IniLikeReadException) if error occured while parsing or "MIME Cache" group is missing.
      */
     this(IniLikeReader)(IniLikeReader reader, string fileName = null, ReadOptions readOptions = ReadOptions.init)
     {
@@ -772,8 +772,8 @@ static if (isFreedesktop)
 }
 
 /**
- * Create MimeInfoCacheFile objects for paths.
- * Returns: Array of MimeInfoCacheFile objects read from paths. If some could not be read it's not included in the results.
+ * Create $(D MimeInfoCacheFile) objects for paths.
+ * Returns: Array of $(D MimeInfoCacheFile) objects read from paths. If some could not be read it's not included in the results.
  */
 @trusted MimeInfoCacheFile[] mimeInfoCacheFiles(const(string)[] paths) nothrow
 {
@@ -809,8 +809,8 @@ static if (isFreedesktop)
 interface IDesktopFileProvider
 {
     /**
-     * Retrieve $(B DesktopFile) by desktopId
-     * Returns: Found $(B DesktopFile) or null if not found.
+     * Retrieve $(D desktopfile.file.DesktopFile) by desktopId
+     * Returns: Found $(D desktopfile.file.DesktopFile) or null if not found.
      */
     const(DesktopFile) getByDesktopId(string desktopId);
 }
@@ -848,6 +848,7 @@ public:
     
     /**
      * Get DesktopFile by desktop id.
+     * 
      * This implementation searches applicationsPaths given in constructor to find, parse and cache .desktop file.
      * If found file has TryExec value it also checks if executable can be find in binPaths. 
      * Note: Exec value is left unchecked.
@@ -1036,7 +1037,7 @@ if(isForwardRange!ListRange && is(ElementType!ListRange : const(MimeAppsListFile
  *  mimeAppsListFiles = Range of $(D MimeAppsListFile) objects to use in searching.
  *  mimeInfoCacheFiles = Range of $(D MimeInfoCacheFile) objects to use in searching.
  *  desktopFileProvider = Desktop file provider instance. Must be non-null.
- * Returns: Array of found $(B DesktopFile) objects capable of opening file of given MIME type or url of given scheme.
+ * Returns: Array of found $(D desktopfile.file.DesktopFile) objects capable of opening file of given MIME type or url of given scheme.
  * Note: If no applications found for this mimeType, you may consider to use this function on parent MIME type.
  * See_Also: $(LINK2 https://specifications.freedesktop.org/mime-apps-spec/latest/ar01s03.html, Adding/removing associations), $(D findKnownAssociatedApplications), $(D listAssociatedApplications)
  */
@@ -1069,7 +1070,7 @@ unittest
  *  mimeAppsListFiles = Range of $(D MimeAppsListFile) objects to use in searching.
  *  mimeInfoCacheFiles = Range of $(D MimeInfoCacheFile) objects to use in searching.
  *  desktopFileProvider = Desktop file provider instance. Must be non-null.
- * Returns: Array of found $(B DesktopFile) objects capable of opening file of given MIME type or url of given scheme.
+ * Returns: Array of found $(D desktopfile.file.DesktopFile) objects capable of opening file of given MIME type or url of given scheme.
  * See_Also: $(D findAssociatedApplications), $(D listKnownAssociatedApplications)
  */
 const(DesktopFile)[] findKnownAssociatedApplications(ListRange, CacheRange)(string mimeType, ListRange mimeAppsListFiles, CacheRange mimeInfoCacheFiles, IDesktopFileProvider desktopFileProvider) 
@@ -1099,7 +1100,7 @@ unittest
  *  mimeAppsListFiles = Range of $(D MimeAppsListFile) objects to use in searching.
  *  mimeInfoCacheFiles = Range of $(D MimeInfoCacheFile) objects to use in searching.
  *  desktopFileProvider = Desktop file provider instance. Must be non-null.
- * Returns: Found $(B DesktopFile) or null if not found.
+ * Returns: Found $(D desktopfile.file.DesktopFile) or null if not found.
  * Note: You probably will need to call this function on parent MIME type if it fails for original mimeType.
  * See_Also: $(LINK2 https://specifications.freedesktop.org/mime-apps-spec/latest/ar01s04.html, Default Application)
  */
@@ -1240,7 +1241,7 @@ unittest
  * Apply query for file with fileName. This should be mimeapps.list file.
  * If file does not exist it will be created.
  * Throws:
- *   $(D IniLikeReadException) if errors occured duting reading of file.
+ *   $(D inilike.file.IniLikeReadException) if errors occured duting reading of file.
  *   $(B ErrnoException) if errors occured during file writing.
  */
 @trusted void updateAssociations(string fileName, ref AssociationUpdateQuery query)
