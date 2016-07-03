@@ -25,20 +25,6 @@ Note: detection of file MIME type is out of the scope of **mimeapps**. You may c
 
 * Support for desktop-specific mimeapps.list files.
 
-## Generating documentation
-
-Ddoc:
-
-    dub build --build=docs
-    
-Ddox:
-
-    dub build --build=ddox
-    
-## Running tests
-
-    dub test
-
 ## Examples
 
 ### [Mimeapps list](examples/list/source/app.d)
