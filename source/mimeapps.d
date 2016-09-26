@@ -1,7 +1,7 @@
 /**
  * Finding associations between MIME types and applications.
  * Authors: 
- *  $(LINK2 https://github.com/MyLittleRobo, Roman Chistokhodov)
+ *  $(LINK2 https://github.com/FreeSlave, Roman Chistokhodov)
  * Copyright:
  *  Roman Chistokhodov, 2016
  * License: 

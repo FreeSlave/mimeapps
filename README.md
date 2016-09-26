@@ -2,15 +2,15 @@
 
 D library for finding associations between MIME types and applications, e.g. for deciding which application should be used to open a file.
 
-[![Build Status](https://travis-ci.org/MyLittleRobo/mimeapps.svg?branch=master)](https://travis-ci.org/MyLittleRobo/mimeapps) [![Coverage Status](https://coveralls.io/repos/github/MyLittleRobo/mimeapps/badge.svg?branch=master)](https://coveralls.io/github/MyLittleRobo/mimeapps?branch=master)
+[![Build Status](https://travis-ci.org/FreeSlave/mimeapps.svg?branch=master)](https://travis-ci.org/FreeSlave/mimeapps) [![Coverage Status](https://coveralls.io/repos/github/FreeSlave/mimeapps/badge.svg?branch=master)](https://coveralls.io/github/FreeSlave/mimeapps?branch=master)
 
-[Online documentation](https://mylittlerobo.github.io/d-freedesktop/docs/mimeapps.html)
+[Online documentation](https://freeslave.github.io/d-freedesktop/docs/mimeapps.html)
 
 Modern desktop environments on GNU/Linux and BSD flavors implement [MIME Applications Associations](https://www.freedesktop.org/wiki/Specifications/mime-apps-spec/)
 to control file associations. The goal of **mimeapps** library is to provide implementation of this specification in D programming language.
 Please feel free to propose enchancements or report any related bugs to *Issues* page.
 
-Note: detection of file MIME type is out of the scope of **mimeapps**. You may consider using [mime library](https://github.com/MyLittleRobo/mime) for this purpose.
+Note: detection of file MIME type is out of the scope of **mimeapps**. You may consider using [mime library](https://github.com/FreeSlave/mime) for this purpose.
 
 ## Features
 
@@ -56,7 +56,7 @@ Add option --ask to list all associated applications before opening the file.
 
 Pass http url to open in web browser:
 
-    dub run :open -- --ask https://github.com/MyLittleRobo/mimeapps
+    dub run :open -- --ask https://github.com/FreeSlave/mimeapps
 
 ### [Mimeapps update](examples/update/source/app.d)
 
