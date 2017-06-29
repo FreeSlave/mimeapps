@@ -5,6 +5,8 @@ import std.string : stripRight, startsWith;
 import std.conv : to;
 import std.typecons : rebindable, Rebindable;
 
+import std.regex;
+
 import desktopfile.paths;
 import mimeapps;
 import mime.database;
@@ -25,20 +27,20 @@ void main(string[] args)
     auto mimeAppsLists = mimeAppsListFiles();
     auto mimeInfoCaches = mimeInfoCacheFiles();
     
+    auto urlRegex = regex(`([a-z]+)://.*`);
+    
     foreach(filePath; files) {
         Rebindable!(const(MimeType)) mimeType;
         string mimeTypeName;
-        if (filePath.startsWith("http://")) {
-            mimeTypeName = "x-scheme-handler/http";
-        } else if (filePath.startsWith("https://")) {
-            mimeTypeName = "x-scheme-handler/https";
+        auto matchResult = matchFirst(filePath, urlRegex);
+        if (!matchResult.empty) {
+            mimeTypeName = "x-scheme-handler/" ~ matchResult[1];
         } else {
             mimeType = mimeDatabase.mimeTypeForFile(filePath, match);
             if (mimeType) {
                 mimeTypeName = mimeType.name;
             }
         }
-        
         if (mimeTypeName.empty) {
             stderr.writefln("Could not detect MIME type for %s", filePath);
             continue;
