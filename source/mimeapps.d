@@ -877,7 +877,7 @@ private:
                 auto desktopFile = new DesktopFile(filePath, _readOptions);
                 string tryExec = desktopFile.tryExecValue();
                 if (tryExec.length) {
-                    string executable = findExecutable(tryExec, binPaths);
+                    string executable = findExecutable(tryExec, _binPaths);
                     if (executable.empty) {
                         return DesktopFileItem.init;
                     }
