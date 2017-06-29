@@ -311,7 +311,7 @@ final class MimeAppsListFile : IniLikeFile
     }
     
     /**
-     * Read MIME type associations from IniLikeReader, e.g. acquired from iniLikeFileReader or iniLikeStringReader.
+     * Read MIME type associations from $(D inilike.range.IniLikeReader), e.g. acquired from $(D inilike.range.iniLikeFileReader) or $(D inilike.range.iniLikeStringReader).
      * Throws:
      *  $(D inilike.file.IniLikeReadException) if error occured while parsing or "MIME Cache" group is missing.
      */
@@ -330,7 +330,7 @@ final class MimeAppsListFile : IniLikeFile
     
     /**
      * Access "Desktop Applications" group of default associations.
-     * Returns: MimeAppsGroup for "Desktop Applications" group or null if file does not have such group.
+     * Returns: $(D MimeAppsGroup) for "Desktop Applications" group or null if file does not have such group.
      * See_Also: $(D addedAssociations)
      */
     @safe inout(MimeAppsGroup) defaultApplications() nothrow inout {
@@ -339,7 +339,7 @@ final class MimeAppsListFile : IniLikeFile
     
     /**
      * Access "Added Associations" group of explicitly added associations.
-     * Returns: MimeAppsGroup for "Added Associations" group or null if file does not have such group.
+     * Returns: $(D MimeAppsGroup) for "Added Associations" group or null if file does not have such group.
      * See_Also: $(D defaultApplications), $(D removedAssociations)
      */
     @safe inout(MimeAppsGroup) addedAssociations() nothrow inout {
@@ -348,7 +348,7 @@ final class MimeAppsListFile : IniLikeFile
     
     /**
      * Access "Removed Associations" group of explicitily removed associations.
-     * Returns: MimeAppsGroup for "Removed Associations" group or null if file does not have such group.
+     * Returns: $(D MimeAppsGroup) for "Removed Associations" group or null if file does not have such group.
      * See_Also: $(D addedAssociations)
      */
     @safe inout(MimeAppsGroup) removedAssociations() nothrow inout {
@@ -515,7 +515,7 @@ text/plain=geany.desktop;`;
     }
     
     /**
-     * Set list of desktop ids as assocations for mimeType. This overwrites existing assocations.
+     * Set list of desktop ids as assocations for $(D mimeType). This overwrites existing assocations.
      * Note: This only changes the object, but not file itself.
      * See_Also: $(D MimeAppsGroup.setAssocations)
      */
@@ -674,7 +674,7 @@ final class MimeInfoCacheFile : IniLikeFile
     }
     
     /**
-     * Read MIME Cache from IniLikeReader, e.g. acquired from iniLikeFileReader or iniLikeStringReader.
+     * Read MIME Cache from $(D inilike.range.IniLikeReader), e.g. acquired from $(D inilike.range.iniLikeFileReader) or $(D inilike.range.iniLikeStringReader).
      * Throws:
      *  $(D inilike.file.IniLikeReadException) if error occured while parsing or "MIME Cache" group is missing.
      */
@@ -741,8 +741,8 @@ notmimetype=value
 }
 
 /**
- * Create MimeAppsListFile objects for paths.
- * Returns: Array of MimeAppsListFile objects read from paths. If some could not be read it's not included in the results.
+ * Create $(D MimeAppsListFile) objects for paths.
+ * Returns: Array of $(D MimeAppsListFile) objects read from paths. If some could not be read it's not included in the results.
  */
 @trusted MimeAppsListFile[] mimeAppsListFiles(const(string)[] paths) nothrow
 {
@@ -829,7 +829,7 @@ private:
     
 public:
     /**
-     * Construct using applicationsPaths.
+     * Construct using given application paths.
      * Params:
      *  applicationsPaths = Paths of applications/ directories where .desktop files are stored. These should be all known paths even if they don't exist at the time.
      *  binPaths = Paths where executable files are stored.
@@ -841,7 +841,7 @@ public:
         _binPaths = binPaths.dup;
     }
     
-    /// ditto, but determine binPaths from PATH environment variable automatically.
+    /// ditto, but determine binPaths from $(B PATH) environment variable automatically.
     @trusted this(in string[] applicationsPaths, DesktopFile.DesktopReadOptions options = DesktopFile.DesktopReadOptions.init) {
         this(applicationsPaths, binPaths().array, options);
     }
@@ -849,8 +849,8 @@ public:
     /**
      * Get DesktopFile by desktop id.
      * 
-     * This implementation searches applicationsPaths given in constructor to find, parse and cache .desktop file.
-     * If found file has TryExec value it also checks if executable can be find in binPaths. 
+     * This implementation searches $(B applicationsPaths) given in constructor to find, parse and cache .desktop file.
+     * If found file has $(D TryExec) value it also checks if executable can be found in $(B binPaths). 
      * Note: Exec value is left unchecked.
      */
     override const(DesktopFile) getByDesktopId(string desktopId)
@@ -971,7 +971,7 @@ private const(DesktopFile)[] findAssociatedApplicationsImpl(ListRange, CacheRang
     return desktopFiles;
 }
 /**
- * List associated applications for mimeType.
+ * List associated applications for given MIME type.
  * Params:
  *  mimeType = MIME type or uri scheme handler in question.
  *  mimeAppsListFiles = Range of $(D MimeAppsListFile) objects to use in searching.
@@ -987,7 +987,7 @@ string[] listAssociatedApplications(ListRange, CacheRange)(string mimeType, List
 }
 
 /**
- * List all known associated applications for mimeType, including explicitly removed by user.
+ * List all known associated applications for given MIME type, including explicitly removed by user.
  * Params:
  *  mimeType = MIME type or uri scheme handler in question.
  *  mimeAppsListFiles = Range of $(D MimeAppsListFile) objects to use in searching.
@@ -1004,7 +1004,7 @@ if(isForwardRange!ListRange && is(ElementType!ListRange : const(MimeAppsListFile
 }
 
 /**
- * List explicitily set default applications for mimeType.
+ * List explicitily set default applications for given MIME type.
  * Params:
  *  mimeType = MIME type or uri scheme handler in question.
  *  mimeAppsListFiles = Range of $(D MimeAppsListFile) objects to use in searching.
@@ -1031,7 +1031,7 @@ if(isForwardRange!ListRange && is(ElementType!ListRange : const(MimeAppsListFile
 }
 
 /**
- * Find associated applications for mimeType.
+ * Find associated applications for given MIME type.
  * Params:
  *  mimeType = MIME type or uri scheme handler in question.
  *  mimeAppsListFiles = Range of $(D MimeAppsListFile) objects to use in searching.
@@ -1064,7 +1064,7 @@ unittest
 }
 
 /**
- * Find all known associated applications for mimeType, including explicitly removed by user.
+ * Find all known associated applications for given MIME type, including explicitly removed by user.
  * Params:
  *  mimeType = MIME type or uri scheme handler in question.
  *  mimeAppsListFiles = Range of $(D MimeAppsListFile) objects to use in searching.
@@ -1094,7 +1094,7 @@ unittest
 }
 
 /**
- * Find default application for mimeType.
+ * Find default application for given MIME type.
  * Params:
  *  mimeType = MIME type or uri scheme handler in question.
  *  mimeAppsListFiles = Range of $(D MimeAppsListFile) objects to use in searching.
