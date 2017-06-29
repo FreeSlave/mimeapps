@@ -1141,12 +1141,10 @@ unittest
  */
 struct AssociationUpdateQuery
 {
-    /**
-     * Operation on MIME type application assocication.
-     */
-    static struct Operation
+    // Operation on MIME type application assocication.
+    private static struct Operation
     {
-        ///Type of operation
+        // Type of operation
         enum Type : ubyte {
             add,
             remove,
