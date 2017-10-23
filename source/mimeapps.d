@@ -1044,7 +1044,7 @@ body {
 }
 
 ///
-unittest
+version(mimeappsFileTest) unittest
 {
     auto desktopProvider = new DesktopFileProvider(["test/applications"]);
     auto mimeAppsList = new MimeAppsListFile("test/applications/mimeapps.list");
@@ -1076,7 +1076,7 @@ body {
 }
 
 ///
-unittest
+version(mimeappsFileTest) unittest
 {
     auto desktopProvider = new DesktopFileProvider(["test/applications"]);
     auto mimeAppsList = new MimeAppsListFile("test/applications/mimeapps.list");
@@ -1115,7 +1115,7 @@ body {
 }
 
 ///
-unittest
+version(mimeappsFileTest) unittest
 {
     auto desktopProvider = new DesktopFileProvider(["test/applications"]);
     auto mimeAppsList = new MimeAppsListFile("test/applications/mimeapps.list");
