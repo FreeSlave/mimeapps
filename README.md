@@ -43,7 +43,7 @@ Parse all mimeapps.list and mimeinfo.cache found on the system. Reports errors t
 Use this example to check if the mimeapps library can parse all related files on your system.
 
     dub run :test
-    
+
 ### [Mimeapps open](examples/open/source/app.d)
 
 Detect MIME type of file and open it with default application for found type.
@@ -60,7 +60,7 @@ Pass http url to open in web browser:
 
 ### [Mimeapps update](examples/update/source/app.d)
 
-Update mimeapps.list file. Since this library is in development, don't use this example to update file associations on your system. 
+Update mimeapps.list file. Since this library is in development, don't use this example to update file associations on your system.
 Better make copy first.
 
     cp $HOME/.config/mimeapps.list /tmp/mimeapps.list
