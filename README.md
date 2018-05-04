@@ -27,41 +27,41 @@ Note: detection of file MIME type is out of the scope of **mimeapps**. You may c
 
 ## Examples
 
-### [Mimeapps list](examples/list/source/app.d)
+### [Mimeapps list](examples/list.d)
 
 List default application and other associated applications for MIME type(s):
 
-    dub run :list -- text/plain image/png text/html
+    dub examples/list.d text/plain image/png text/html
 
 Also can be used for uri schemes:
 
-    dub run :list -- x-scheme-handler/http
+    dub examples/list.d x-scheme-handler/http
 
-### [Mimeapps test](examples/test/source/app.d)
+### [Mimeapps test](examples/test.d)
 
 Parse all mimeapps.list and mimeinfo.cache found on the system. Reports errors to stderr.
 Use this example to check if the mimeapps library can parse all related files on your system.
 
-    dub run :test
+    dub examples/test.d
 
 ### [Mimeapps open](examples/open/source/app.d)
 
 Detect MIME type of file and open it with default application for found type.
 
-    dub run :open -- LICENSE_1_0.txt
+    dub examples/open.d LICENSE_1_0.txt
 
 Add option --ask to list all associated applications before opening the file.
 
-    dub run :open -- --ask LICENSE_1_0.txt
+    dub examples/open.d --ask LICENSE_1_0.txt
 
 Pass http url to open in web browser:
 
-    dub run :open -- --ask https://github.com/FreeSlave/mimeapps
+    dub examples/open.d --ask https://github.com/FreeSlave/mimeapps
 
 ### [Mimeapps update](examples/update/source/app.d)
 
 Update mimeapps.list file. Since this library is in development, don't use this example to update file associations on your system.
-Better make copy first.
+Better make a copy first.
 
     cp $HOME/.config/mimeapps.list /tmp/mimeapps.list
-    dub run :update -- --file=/tmp/mimeapps.list --remove=text/plain:kde4-kwrite.desktop --add=image/jpeg:gthumb.desktop --default=application/pdf:kde4-okular.desktop
+    dub examples/update.d --file=/tmp/mimeapps.list --remove=text/plain:kde4-kwrite.desktop --add=image/jpeg:gthumb.desktop --default=application/pdf:kde4-okular.desktop

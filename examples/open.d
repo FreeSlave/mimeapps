@@ -1,3 +1,9 @@
+/+dub.sdl:
+name "open"
+dependency "mimeapps" path="../"
+dependency "mime" version="~>0.4.3"
++/
+
 import std.stdio;
 import std.getopt;
 import std.string : stripRight, startsWith;

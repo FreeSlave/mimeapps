@@ -1,3 +1,8 @@
+/+dub.sdl:
+name "update"
+dependency "mimeapps" path="../"
++/
+
 import std.stdio;
 import std.getopt;
 import std.string;
@@ -23,19 +28,19 @@ int main(string[] args)
         "remove", "Remove association", &toRemove,
         "default", "Set default application", &toSetDefault
     );
-    
+
     if (fileName.empty) {
         stderr.writeln("No input file given");
         return 1;
     }
-    
+
     if (toAdd.empty && toRemove.empty && toSetDefault.empty) {
         stderr.writeln("No update operations given");
         return 1;
     }
-    
+
     AssociationUpdateQuery query;
-    
+
     foreach(str; toRemove) {
         auto splitted = str.findSplit(":");
         if (splitted[1].empty) {
@@ -43,7 +48,7 @@ int main(string[] args)
         }
         query.removeAssociation(splitted[0], splitted[2]);
     }
-    
+
     foreach(str; toAdd) {
         auto splitted = str.findSplit(":");
         if (splitted[1].empty) {
@@ -51,7 +56,7 @@ int main(string[] args)
         }
         query.addAssociation(splitted[0], splitted[2]);
     }
-    
+
     foreach(str; toSetDefault) {
         auto splitted = str.findSplit(":");
         if (splitted[1].empty) {
@@ -59,15 +64,15 @@ int main(string[] args)
         }
         query.setDefaultApplication(splitted[0], splitted[2]);
     }
-    
+
     static if (isFreedesktop) {
         auto mimeAppsLists = mimeAppsListPaths();
         if (mimeAppsLists.canFind(buildNormalizedPath(fileName))) {
-            stderr.writeln("Cowardly refuse to update system file. Make a copy in other path.");
+            stderr.writeln("Cowardly refusing to update a system file. Make a copy in other path.");
             return 1;
         }
     }
-    
+
     updateAssociations(fileName, query);
     return 0;
 }

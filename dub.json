@@ -5,11 +5,10 @@
     "copyright": "Copyright © 2016, Roman Chistokhodov",
     "authors": ["Roman Chistokhodov"],
     "dependencies": {
-        "desktopfile" : "~>1.1.0"
+        "desktopfile" : "~>1.2.0"
     },
     "targetName" : "mimeapps",
     "targetPath" : "lib",
     "targetType" : "library",
-    "versions" : ["mimeappsFileTest"],
-    "subPackages" : ["./examples/list", "./examples/test", "./examples/open", "./examples/update"]
+    "versions" : ["mimeappsFileTest"]
 }

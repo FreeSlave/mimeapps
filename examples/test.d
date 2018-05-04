@@ -1,3 +1,8 @@
+/+dub.sdl:
+name "test"
+dependency "mimeapps" path="../"
++/
+
 import std.stdio;
 import std.algorithm;
 import std.file;
