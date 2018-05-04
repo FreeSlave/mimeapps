@@ -10,18 +10,18 @@ import desktopfile.paths;
 import mimeapps;
 
 void main(string[] args)
-{   
+{
     auto mimeTypes = args[1..$];
-    
+
     auto appPaths = applicationsPaths();
     auto provider = new DesktopFileProvider(appPaths);
     auto mimeAppsLists = mimeAppsListFiles();
     auto mimeInfoCaches = mimeInfoCacheFiles();
-    
+
     writeln("Using application paths: ", appPaths);
     writeln("Using mimeapps.list files: ", mimeAppsLists.map!(mimeAppsList => mimeAppsList.fileName));
     writeln("Using mimeinfo.cache files: ", mimeInfoCaches.map!(mimeInfoCache => mimeInfoCache.fileName));
-    
+
     foreach(mimeType; mimeTypes) {
         auto associatedApps = findAssociatedApplications(mimeType, mimeAppsLists, mimeInfoCaches, provider);
         auto defaultApp = findDefaultApplication(mimeType, mimeAppsLists, mimeInfoCaches, provider);

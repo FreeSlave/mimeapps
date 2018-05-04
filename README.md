@@ -44,7 +44,7 @@ Use this example to check if the mimeapps library can parse all related files on
 
     dub examples/test.d
 
-### [Mimeapps open](examples/open/source/app.d)
+### [Mimeapps open](examples/open.d)
 
 Detect MIME type of file and open it with default application for found type.
 
@@ -58,7 +58,7 @@ Pass http url to open in web browser:
 
     dub examples/open.d --ask https://github.com/FreeSlave/mimeapps
 
-### [Mimeapps update](examples/update/source/app.d)
+### [Mimeapps update](examples/update.d)
 
 Update mimeapps.list file. Since this library is in development, don't use this example to update file associations on your system.
 Better make a copy first.

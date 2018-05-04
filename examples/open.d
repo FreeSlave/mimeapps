@@ -24,17 +24,17 @@ void main(string[] args)
     bool ask;
     getopt(args, "ask", "Ask before starting open file in an application", &ask);
     auto files = args[1..$];
-    
+
     auto mimeDatabase = new MimeDatabase(mimePaths());
     alias MimeDatabase.Match M;
     auto match = M.globPatterns|M.magicRules|M.inodeType|M.textFallback|M.octetStreamFallback|M.emptyFileFallback;
-    
+
     auto provider = new DesktopFileProvider(applicationsPaths());
     auto mimeAppsLists = mimeAppsListFiles();
     auto mimeInfoCaches = mimeInfoCacheFiles();
-    
+
     auto urlRegex = regex(`([a-z]+)://.*`);
-    
+
     foreach(filePath; files) {
         Rebindable!(const(MimeType)) mimeType;
         string mimeTypeName;
@@ -51,7 +51,7 @@ void main(string[] args)
             stderr.writefln("Could not detect MIME type for %s", filePath);
             continue;
         }
-        
+
         auto defaultApp = findDefaultApplication(mimeTypeName, mimeAppsLists, mimeInfoCaches, provider).rebindable;
         if (!defaultApp && mimeType !is null && mimeType.parents().length) {
             writefln("Could not find default application for MIME type %s, but it has parent types. Will try them.", mimeTypeName);
@@ -63,17 +63,17 @@ void main(string[] args)
                 }
             }
         }
-        
+
         if (defaultApp) {
             if (ask) {
                 auto associatedApps = findAssociatedApplications(mimeTypeName, mimeAppsLists, mimeInfoCaches, provider);
-                
+
                 writefln("Choose application to open '%s' of type %s", filePath, mimeTypeName);
                 writefln("\t0: %s (%s) - default", defaultApp.displayName, defaultApp.fileName);
                 foreach(i, app; associatedApps) {
                     writefln("\t%s: %s (%s)", i+1, associatedApps[i].displayName, associatedApps[i].fileName);
                 }
-                
+
                 bool ok;
                 do {
                     string input = readln().stripRight;
@@ -94,7 +94,7 @@ void main(string[] args)
                         }
                     }
                 } while(!ok);
-                
+
             } else {
                 defaultApp.startApplication(filePath);
             }
