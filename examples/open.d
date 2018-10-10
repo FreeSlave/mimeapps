@@ -1,7 +1,7 @@
 /+dub.sdl:
 name "open"
 dependency "mimeapps" path="../"
-dependency "mime" version="~>0.4.3"
+dependency "mime" version="~>0.5.0"
 +/
 
 import std.stdio;
@@ -26,8 +26,6 @@ void main(string[] args)
     auto files = args[1..$];
 
     auto mimeDatabase = new MimeDatabase(mimePaths());
-    alias MimeDatabase.Match M;
-    auto match = M.globPatterns|M.magicRules|M.inodeType|M.textFallback|M.octetStreamFallback|M.emptyFileFallback;
 
     auto provider = new DesktopFileProvider(applicationsPaths());
     auto mimeAppsLists = mimeAppsListFiles();
@@ -42,7 +40,7 @@ void main(string[] args)
         if (!matchResult.empty) {
             mimeTypeName = "x-scheme-handler/" ~ matchResult[1];
         } else {
-            mimeType = mimeDatabase.mimeTypeForFile(filePath, match);
+            mimeType = mimeDatabase.mimeTypeForFile(filePath);
             if (mimeType) {
                 mimeTypeName = mimeType.name;
             }
