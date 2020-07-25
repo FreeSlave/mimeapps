@@ -325,7 +325,7 @@ final class MimeAppsListFile : IniLikeFile
      * Returns: $(D MimeAppsGroup) for "Desktop Applications" group or null if file does not have such group.
      * See_Also: $(D addedAssociations)
      */
-    @safe inout(MimeAppsGroup) defaultApplications() nothrow inout {
+    @safe inout(MimeAppsGroup) defaultApplications() nothrow inout pure {
         return _defaultApps;
     }
 
@@ -334,7 +334,7 @@ final class MimeAppsListFile : IniLikeFile
      * Returns: $(D MimeAppsGroup) for "Added Associations" group or null if file does not have such group.
      * See_Also: $(D defaultApplications), $(D removedAssociations)
      */
-    @safe inout(MimeAppsGroup) addedAssociations() nothrow inout {
+    @safe inout(MimeAppsGroup) addedAssociations() nothrow inout pure {
         return _addedApps;
     }
 
@@ -343,7 +343,7 @@ final class MimeAppsListFile : IniLikeFile
      * Returns: $(D MimeAppsGroup) for "Removed Associations" group or null if file does not have such group.
      * See_Also: $(D addedAssociations)
      */
-    @safe inout(MimeAppsGroup) removedAssociations() nothrow inout {
+    @safe inout(MimeAppsGroup) removedAssociations() nothrow inout pure {
         return _removedApps;
     }
 
@@ -680,7 +680,7 @@ final class MimeInfoCacheFile : IniLikeFile
     /**
      * Access "MIME Cache" group.
      */
-    @safe inout(MimeAppsGroup) mimeCache() nothrow inout {
+    @safe inout(MimeAppsGroup) mimeCache() nothrow inout pure {
         return _mimeCache;
     }
 
