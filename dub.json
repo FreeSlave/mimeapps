@@ -5,7 +5,7 @@
     "copyright": "Copyright © 2016, Roman Chistokhodov",
     "authors": ["Roman Chistokhodov"],
     "dependencies": {
-        "desktopfile" : "~>1.2.0"
+        "desktopfile" : "~>1.3.2"
     },
     "targetName" : "mimeapps",
     "targetPath" : "lib",
