@@ -1152,7 +1152,7 @@ struct AssociationUpdateQuery
     /**
      * See_Also: $(D MimeAppsListFile.addAssociation)
      */
-    @safe ref typeof(this) addAssociation(string mimeType, string desktopId) nothrow
+    @safe ref typeof(this) addAssociation(string mimeType, string desktopId) return nothrow
     {
         _operations ~= Operation(mimeType, desktopId, Operation.Type.add);
         return this;
@@ -1160,7 +1160,7 @@ struct AssociationUpdateQuery
     /**
      * See_Also: $(D MimeAppsListFile.setAddedAssocations)
      */
-    @safe ref typeof(this) setAddedAssocations(Range)(string mimeType, Range desktopIds) if (isInputRange!Range && is(ElementType!Range : string))
+    @safe ref typeof(this) setAddedAssocations(Range)(string mimeType, Range desktopIds) return if (isInputRange!Range && is(ElementType!Range : string))
     {
         _operations ~= Operation(mimeType, MimeAppsGroup.joinApps(desktopIds), Operation.Type.setAdded);
         return this;
@@ -1168,7 +1168,7 @@ struct AssociationUpdateQuery
     /**
      * See_Also: $(D MimeAppsListFile.removeAssociation)
      */
-    @safe ref typeof(this) removeAssociation(string mimeType, string desktopId) nothrow
+    @safe ref typeof(this) removeAssociation(string mimeType, string desktopId) return nothrow
     {
         _operations ~= Operation(mimeType, desktopId, Operation.Type.remove);
         return this;
@@ -1176,7 +1176,7 @@ struct AssociationUpdateQuery
     /**
      * See_Also: $(D MimeAppsListFile.setDefaultApplication)
      */
-    @safe ref typeof(this) setDefaultApplication(string mimeType, string desktopId) nothrow
+    @safe ref typeof(this) setDefaultApplication(string mimeType, string desktopId) return nothrow
     {
         _operations ~= Operation(mimeType, desktopId, Operation.Type.setDefault);
         return this;
