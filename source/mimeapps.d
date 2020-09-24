@@ -56,7 +56,7 @@ unittest
     assert(t.media == string.init && t.subtype == string.init);
 }
 
-private @nogc @trusted bool allSymbolsAreValid(const(char)[] name) nothrow pure
+private @nogc @trusted bool allSymbolsAreValid(scope const(char)[] name) nothrow pure
 {
     import std.ascii : isAlpha, isDigit;
     for (size_t i=0; i<name.length; ++i) {
@@ -68,7 +68,7 @@ private @nogc @trusted bool allSymbolsAreValid(const(char)[] name) nothrow pure
     return true;
 }
 
-private @nogc @safe bool isValidMimeTypeName(const(char)[] name) nothrow pure
+private @nogc @safe bool isValidMimeTypeName(scope const(char)[] name) nothrow pure
 {
     auto t = parseMimeTypeName(name);
     return t.media.length && t.subtype.length && allSymbolsAreValid(t.media) && allSymbolsAreValid(t.subtype);
@@ -1185,7 +1185,7 @@ struct AssociationUpdateQuery
     /**
      * Apply query to $(D MimeAppsListFile).
      */
-    @safe void apply(MimeAppsListFile file) const
+    @safe void apply(scope MimeAppsListFile file) const
     {
         foreach(op; _operations)
         {
@@ -1234,7 +1234,7 @@ unittest
  *   $(D inilike.file.IniLikeReadException) if errors occured duting reading of file.
  *   $(B ErrnoException) if errors occured during file writing.
  */
-@trusted void updateAssociations(string fileName, ref AssociationUpdateQuery query)
+@trusted void updateAssociations(string fileName, ref scope const AssociationUpdateQuery query)
 {
     MimeAppsListFile file;
     if (fileName.exists) {
@@ -1258,7 +1258,7 @@ static if (isFreedesktop)
      * Warning: $(RED Since this library is in development this function should be used with care.
      *  Developer can't guarantee yet that it will not damage your file associations settings.)
      */
-    @safe void updateAssociations(ref AssociationUpdateQuery query)
+    @safe void updateAssociations(ref scope const AssociationUpdateQuery query)
     {
         foreach(fileName; writableMimeAppsListPaths()) {
             updateAssociations(fileName, query);
