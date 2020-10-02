@@ -1,7 +1,7 @@
 /+dub.sdl:
 name "open"
 dependency "mimeapps" path="../"
-dependency "mime" version="~>0.5.0"
+dependency "mime" version="~>0.5.2"
 +/
 
 import std.stdio;
