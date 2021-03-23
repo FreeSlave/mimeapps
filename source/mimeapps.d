@@ -123,28 +123,219 @@ static if (isFreedesktop)
     private enum mimeAppsList = "mimeapps.list";
     private enum applicationsMimeAppsList = "applications/mimeapps.list";
 
+    /// Get desktop prefixes for mimeapps.list overrides.
+    @safe auto getDesktopPrefixes() nothrow
+    {
+        import std.process : environment;
+        import std.uni : toLower;
+        import std.utf : byCodeUnit;
+
+        string xdgCurrentDesktop;
+        collectException(environment.get("XDG_CURRENT_DESKTOP"), xdgCurrentDesktop);
+        return xdgCurrentDesktop.byCodeUnit.splitter(':').map!(prefix => prefix.toLower);
+    }
+
+    ///
+    unittest
+    {
+        auto currentDesktopGuard = EnvGuard("XDG_CURRENT_DESKTOP", "LXQT");
+        assert(equal(getDesktopPrefixes(), ["lxqt"]));
+
+        environment["XDG_CURRENT_DESKTOP"] = "unity:GNOME";
+        assert(equal(getDesktopPrefixes(), ["unity", "gnome"]));
+    }
+
+    private @safe string[] getDesktopPrefixesArray() nothrow
+    {
+        string[] toReturn;
+        collectException(getDesktopPrefixes().array, toReturn);
+        return toReturn;
+    }
+
     /**
-     * Find all writable mimeapps.list files locations. Found paths are not checked for existence.
+     * Find all writable mimeapps.list files locations including specific for the current desktop.
+     * Found paths are not checked for existence or write access.
      *
      * $(BLUE This function is Freedesktop only).
-     * See_Also: $(D mimeAppsListPaths)
+     * See_Also: $(D userMimeAppsListPaths), $(D userAppDataMimeAppsListPaths)
      */
-    @safe string[] writableMimeAppsListPaths() nothrow
+    deprecated @safe string[] writableMimeAppsListPaths() nothrow
     {
-        string configHome = xdgConfigHome(mimeAppsList);
-        string appHome = xdgDataHome(applicationsMimeAppsList);
+        return userMimeAppsListPaths() ~ userAppDataMimeAppsListPaths();
+    }
+
+    /// ditto, but using user-provided prefix.
+    deprecated @safe string[] writableMimeAppsListPaths(const string[] desktopPrefixes) nothrow
+    {
+        return userMimeAppsListPaths(desktopPrefixes) ~ userAppDataMimeAppsListPaths(desktopPrefixes);
+    }
+
+    /**
+     * Find mimeapps.list files locations for user overrides including specific for the current desktop.
+     * Found paths are not checked for existence or write access.
+     *
+     * $(BLUE This function is Freedesktop only).
+     * See_Also: $(LINK2 https://specifications.freedesktop.org/mime-apps-spec/latest/ar01s02.html, File name and location)
+     */
+    @safe string[] userMimeAppsListPaths() nothrow
+    {
+        return userMimeAppsListPaths(getDesktopPrefixesArray());
+    }
+
+    ///
+    unittest
+    {
+        auto configHomeGuard = EnvGuard("XDG_CONFIG_HOME", "/home/user/config");
+        auto configDirsGuard = EnvGuard("XDG_CONFIG_DIRS", "/etc/xdg");
+
+        auto dataHomeGuard = EnvGuard("XDG_DATA_HOME", "/home/user/data");
+        auto dataDirsGuard = EnvGuard("XDG_DATA_DIRS", "/usr/local/data:/usr/data");
+
+        auto currentDesktopGuard = EnvGuard("XDG_CURRENT_DESKTOP", "unity:GNOME");
+
+        assert(userMimeAppsListPaths() == ["/home/user/config/unity-mimeapps.list", "/home/user/config/gnome-mimeapps.list", "/home/user/config/mimeapps.list"]);
+    }
+
+    /// ditto, but using user-provided desktop prefixes.
+    @safe string[] userMimeAppsListPaths(const string[] desktopPrefixes) nothrow
+    {
         string[] toReturn;
+        string configHome = xdgConfigHome();
         if (configHome.length) {
-            toReturn ~= configHome;
-        }
-        if (appHome.length) {
-            toReturn ~= appHome;
+            foreach(string desktopPrefix; desktopPrefixes)
+            {
+                toReturn ~= buildPath(configHome, desktopPrefix ~ "-" ~ mimeAppsList);
+            }
+            toReturn ~= buildPath(configHome, mimeAppsList);
         }
         return toReturn;
     }
 
     /**
-     * Find all known mimeapps.list files locations. Found paths are not checked for existence.
+     * Find mimeapps.list files deprecated locations for user overrides including specific for the current desktop.
+     * Found paths are not checked for existence or write access.
+     * These locations are kept for compatibility.
+     *
+     * $(BLUE This function is Freedesktop only).
+     * See_Also: $(LINK2 https://specifications.freedesktop.org/mime-apps-spec/latest/ar01s02.html, File name and location)
+     */
+    @safe string[] userAppDataMimeAppsListPaths() nothrow
+    {
+        return userAppDataMimeAppsListPaths(getDesktopPrefixesArray());
+    }
+
+    ///
+    unittest
+    {
+        auto dataHomeGuard = EnvGuard("XDG_DATA_HOME", "/home/user/data");
+        auto currentDesktopGuard = EnvGuard("XDG_CURRENT_DESKTOP", "unity:GNOME");
+
+        assert(userAppDataMimeAppsListPaths() == ["/home/user/data/applications/unity-mimeapps.list", "/home/user/data/applications/gnome-mimeapps.list", "/home/user/data/applications/mimeapps.list"]);
+    }
+
+    /// ditto, but using user-provided desktop prefixes.
+    @safe string[] userAppDataMimeAppsListPaths(const string[] desktopPrefixes) nothrow
+    {
+        string[] toReturn;
+        string appHome = xdgDataHome("applications");
+        if (appHome.length) {
+            foreach(string desktopPrefix; desktopPrefixes)
+            {
+                toReturn ~= buildPath(appHome, desktopPrefix ~ "-" ~ mimeAppsList);
+            }
+            toReturn ~= buildPath(appHome, mimeAppsList);
+        }
+        return toReturn;
+    }
+
+    /**
+     * Find mimeapps.list files locations for sysadmin and ISV overrides including specific for the current desktop.
+     * Found paths are not checked for existence.
+     *
+     * $(BLUE This function is Freedesktop only).
+     * See_Also: $(LINK2 https://specifications.freedesktop.org/mime-apps-spec/latest/ar01s02.html, File name and location)
+     */
+    @safe string[] vendorMimeAppsListPaths() nothrow
+    {
+        return vendorMimeAppsListPaths(getDesktopPrefixesArray());
+    }
+
+    ///
+    unittest
+    {
+        auto configDirsGuard = EnvGuard("XDG_CONFIG_DIRS", "/etc/xdg");
+        auto currentDesktopGuard = EnvGuard("XDG_CURRENT_DESKTOP", "unity:GNOME");
+
+        assert(vendorMimeAppsListPaths() == ["/etc/xdg/unity-mimeapps.list", "/etc/xdg/gnome-mimeapps.list", "/etc/xdg/mimeapps.list"]);
+    }
+
+    /// ditto, but using user-provided desktop prefixes.
+    @safe string[] vendorMimeAppsListPaths(const string[] desktopPrefixes) nothrow
+    {
+        string[] toReturn;
+        string[] configDirs = xdgConfigDirs();
+
+        foreach(string desktopPrefix; desktopPrefixes)
+        {
+            foreach(configDir; configDirs)
+            {
+                toReturn ~= buildPath(configDir, desktopPrefix ~ "-" ~ mimeAppsList);
+            }
+        }
+        foreach(configDir; configDirs)
+        {
+            toReturn ~= buildPath(configDir, mimeAppsList);
+        }
+        return toReturn;
+    }
+
+    /**
+     * Find mimeapps.list files locations for distribution provided defaults including specific for the current desktop.
+     * Found paths are not checked for existence.
+     *
+     * $(BLUE This function is Freedesktop only).
+     * See_Also: $(LINK2 https://specifications.freedesktop.org/mime-apps-spec/latest/ar01s02.html, File name and location)
+     */
+    @safe string[] distributionMimeAppsListPaths() nothrow
+    {
+        return distributionMimeAppsListPaths(getDesktopPrefixesArray());
+    }
+
+    ///
+    unittest
+    {
+        auto dataDirsGuard = EnvGuard("XDG_DATA_DIRS", "/usr/local/data:/usr/data");
+        auto currentDesktopGuard = EnvGuard("XDG_CURRENT_DESKTOP", "unity:GNOME");
+
+        assert(distributionMimeAppsListPaths() == [
+                "/usr/local/data/applications/unity-mimeapps.list", "/usr/data/applications/unity-mimeapps.list",
+                "/usr/local/data/applications/gnome-mimeapps.list", "/usr/data/applications/gnome-mimeapps.list",
+                "/usr/local/data/applications/mimeapps.list",       "/usr/data/applications/mimeapps.list"]);
+    }
+
+    /// ditto, but using user-provided desktop prefixes.
+    @safe string[] distributionMimeAppsListPaths(const string[] desktopPrefixes) nothrow
+    {
+        string[] toReturn;
+        string[] appDataDirs = xdgDataDirs("applications");
+
+        foreach(string desktopPrefix; desktopPrefixes)
+        {
+            foreach(appDataDir; appDataDirs)
+            {
+                toReturn ~= buildPath(appDataDir, desktopPrefix ~ "-" ~ mimeAppsList);
+            }
+        }
+        foreach(appDataDir; appDataDirs)
+        {
+            toReturn ~= buildPath(appDataDir, mimeAppsList);
+        }
+        return toReturn;
+    }
+
+    /**
+     * Find all known mimeapps.list files locations.
+     * Found paths are not checked for existence.
      *
      * $(BLUE This function is Freedesktop only).
      * Returns: Paths of mimeapps.list files in the system.
@@ -152,24 +343,14 @@ static if (isFreedesktop)
      */
     @safe string[] mimeAppsListPaths() nothrow
     {
-        string[] configPaths = xdgConfigDirs(mimeAppsList);
-        string[] appPaths = xdgDataDirs(applicationsMimeAppsList);
-        return writableMimeAppsListPaths() ~ configPaths ~ appPaths;
+        return mimeAppsListPaths(getDesktopPrefixesArray());
     }
 
-    ///
-    unittest
+    /// ditto, but using user-provided desktop prefixes.
+    @safe string[] mimeAppsListPaths(const string[] desktopPrefixes) nothrow
     {
-        auto dataHomeGuard = EnvGuard("XDG_DATA_HOME", "/home/user/data");
-        auto dataDirsGuard = EnvGuard("XDG_DATA_DIRS", "/usr/local/data:/usr/data");
-
-        auto configHomeGuard = EnvGuard("XDG_CONFIG_HOME", "/home/user/config");
-        auto configDirsGuard = EnvGuard("XDG_CONFIG_DIRS", "/etc/xdg");
-
-        assert(mimeAppsListPaths() == [
-            "/home/user/config/mimeapps.list", "/home/user/data/applications/mimeapps.list", "/etc/xdg/mimeapps.list",
-            "/usr/local/data/applications/mimeapps.list", "/usr/data/applications/mimeapps.list"
-        ]);
+        return userMimeAppsListPaths(desktopPrefixes) ~ vendorMimeAppsListPaths(desktopPrefixes) ~
+            userAppDataMimeAppsListPaths(desktopPrefixes) ~ distributionMimeAppsListPaths(desktopPrefixes);
     }
 
     /**
@@ -1231,8 +1412,8 @@ unittest
  * Apply query for file with fileName. This should be mimeapps.list file.
  * If file does not exist it will be created.
  * Throws:
- *   $(D inilike.file.IniLikeReadException) if errors occured duting reading of file.
- *   $(B ErrnoException) if errors occured during file writing.
+ *   $(D inilike.file.IniLikeReadException) if errors occured during the file reading.
+ *   $(B ErrnoException) if errors occured during the file writing.
  */
 @trusted void updateAssociations(string fileName, ref scope const AssociationUpdateQuery query)
 {
@@ -1249,18 +1430,17 @@ unittest
 static if (isFreedesktop)
 {
     /**
-     * Apply query for writable mimeapps.list files.
+     * Change MIME Applications Associations for the current user by applying the provided query.
      *
-     * For compatibility purposes this overwrites both $XDG_CONFIG_HOME/mimeapps.list and $XDG_DATA_HOME/applications/mimeapps.list.
+     * For compatibility purposes it overwrites user overrides in the deprecated location too.
+     * It will not overwrite desktop-specific overrides.
      *
      * $(BLUE This function is Freedesktop only).
-     * See_Also: $(D writableMimeAppsListPaths)
-     * Warning: $(RED Since this library is in development this function should be used with care.
-     *  Developer can't guarantee yet that it will not damage your file associations settings.)
+     * See_Also: $(D userMimeAppsListPaths), $(D userAppDataMimeAppsListPaths)
      */
     @safe void updateAssociations(ref scope const AssociationUpdateQuery query)
     {
-        foreach(fileName; writableMimeAppsListPaths()) {
+        foreach(fileName; userMimeAppsListPaths(string[].init) ~ userAppDataMimeAppsListPaths(string[].init)) {
             updateAssociations(fileName, query);
         }
     }

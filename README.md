@@ -20,9 +20,6 @@ Note: detection of file MIME type is out of the scope of **mimeapps**. You may c
 * Detecting default application for MIME type.
 * Getting associated applications for MIME type with respect to explicitly removed ones.
 * Adding, removing association or setting default application for MIME type.
-
-### Missing
-
 * Support for desktop-specific mimeapps.list files.
 
 ## Examples
@@ -60,8 +57,7 @@ Pass http url to open in web browser:
 
 ### [Mimeapps update](examples/update.d)
 
-Update mimeapps.list file. Since this library is in development, don't use this example to update file associations on your system.
-Better make a copy first.
+Update mimeapps.list file. If you want to update file associations on your system using this example use *--force* flag, but I would recommend to make a copy first.
 
     cp $HOME/.config/mimeapps.list /tmp/mimeapps.list
     dub examples/update.d --file=/tmp/mimeapps.list --remove=text/plain:kde4-kwrite.desktop --add=image/jpeg:gthumb.desktop --default=application/pdf:kde4-okular.desktop

@@ -23,10 +23,12 @@ int main(string[] args)
     string[] toAdd;
     string[] toRemove;
     string[] toSetDefault;
+    bool forced;
     getopt(args, "file", "Input file to update", &fileName,
         "add", "Add association", &toAdd,
         "remove", "Remove association", &toRemove,
-        "default", "Set default application", &toSetDefault
+        "default", "Set default application", &toSetDefault,
+        "force", "Force changing current user override mimeapps.list", &forced
     );
 
     if (fileName.empty) {
@@ -67,7 +69,7 @@ int main(string[] args)
 
     static if (isFreedesktop) {
         auto mimeAppsLists = mimeAppsListPaths();
-        if (mimeAppsLists.canFind(buildNormalizedPath(fileName))) {
+        if (mimeAppsLists.canFind(buildNormalizedPath(fileName)) && !forced) {
             stderr.writeln("Cowardly refusing to update a system file. Make a copy in other path.");
             return 1;
         }
