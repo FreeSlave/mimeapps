@@ -50,16 +50,32 @@ void main(string[] args)
             continue;
         }
 
-        auto defaultApp = findDefaultApplication(mimeTypeName, mimeAppsLists, mimeInfoCaches, provider).rebindable;
-        if (!defaultApp && mimeType !is null && mimeType.parents().length) {
-            writefln("Could not find default application for MIME type %s, but it has parent types. Will try them.", mimeTypeName);
+        auto findDefaultApplicationForParents(const(MimeType) mimeType)
+        {
             foreach(parent; mimeType.parents()) {
-                defaultApp = findDefaultApplication(parent, mimeAppsLists, mimeInfoCaches, provider).rebindable;
+                writefln("Trying to find default application for %s...", parent);
+                auto defaultApp = findDefaultApplication(parent, mimeAppsLists, mimeInfoCaches, provider).rebindable;
                 if (defaultApp) {
                     mimeTypeName = parent;
                     writefln("Found default application for parent type %s", parent);
+                    return defaultApp;
                 }
             }
+            foreach(parent; mimeType.parents()) {
+                auto parentMimeType = mimeDatabase.mimeType(parent);
+                if (parentMimeType !is null && parentMimeType.parents().length) {
+                    auto defaultApp = findDefaultApplicationForParents(parentMimeType);
+                    if (defaultApp)
+                        return defaultApp;
+                }
+            }
+            return Rebindable!(const(DesktopFile)).init;
+        }
+
+        auto defaultApp = findDefaultApplication(mimeTypeName, mimeAppsLists, mimeInfoCaches, provider).rebindable;
+        if (!defaultApp && mimeType !is null && mimeType.parents().length) {
+            writefln("Could not find default application for MIME type %s, but it has parent types. Will try them.", mimeTypeName);
+            defaultApp = findDefaultApplicationForParents(mimeType);
         }
 
         if (defaultApp) {
