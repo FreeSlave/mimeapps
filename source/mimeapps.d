@@ -196,7 +196,7 @@ static if (isFreedesktop)
         assert(userMimeAppsListPaths() == ["/home/user/config/unity-mimeapps.list", "/home/user/config/gnome-mimeapps.list", "/home/user/config/mimeapps.list"]);
     }
 
-    /// ditto, but using user-provided desktop prefixes.
+    /// ditto, but using user-provided desktop prefixes (can be empty, in which case desktop-specific mimeapps.list locations are not included).
     @safe string[] userMimeAppsListPaths(const string[] desktopPrefixes) nothrow
     {
         string[] toReturn;
@@ -233,7 +233,7 @@ static if (isFreedesktop)
         assert(userAppDataMimeAppsListPaths() == ["/home/user/data/applications/unity-mimeapps.list", "/home/user/data/applications/gnome-mimeapps.list", "/home/user/data/applications/mimeapps.list"]);
     }
 
-    /// ditto, but using user-provided desktop prefixes.
+    /// ditto, but using user-provided desktop prefixes (can be empty, in which case desktop-specific mimeapps.list locations are not included).
     @safe string[] userAppDataMimeAppsListPaths(const string[] desktopPrefixes) nothrow
     {
         string[] toReturn;
@@ -269,7 +269,7 @@ static if (isFreedesktop)
         assert(vendorMimeAppsListPaths() == ["/etc/xdg/unity-mimeapps.list", "/etc/xdg/gnome-mimeapps.list", "/etc/xdg/mimeapps.list"]);
     }
 
-    /// ditto, but using user-provided desktop prefixes.
+    /// ditto, but using user-provided desktop prefixes (can be empty, in which case desktop-specific mimeapps.list locations are not included).
     @safe string[] vendorMimeAppsListPaths(const string[] desktopPrefixes) nothrow
     {
         string[] toReturn;
@@ -313,7 +313,7 @@ static if (isFreedesktop)
                 "/usr/local/data/applications/mimeapps.list",       "/usr/data/applications/mimeapps.list"]);
     }
 
-    /// ditto, but using user-provided desktop prefixes.
+    /// ditto, but using user-provided desktop prefixes (can be empty, in which case desktop-specific mimeapps.list locations are not included).
     @safe string[] distributionMimeAppsListPaths(const string[] desktopPrefixes) nothrow
     {
         string[] toReturn;
@@ -346,7 +346,7 @@ static if (isFreedesktop)
         return mimeAppsListPaths(getDesktopPrefixesArray());
     }
 
-    /// ditto, but using user-provided desktop prefixes.
+    /// ditto, but using user-provided desktop prefixes (can be empty, in which case desktop-specific mimeapps.list locations are not included).
     @safe string[] mimeAppsListPaths(const string[] desktopPrefixes) nothrow
     {
         return userMimeAppsListPaths(desktopPrefixes) ~ vendorMimeAppsListPaths(desktopPrefixes) ~
@@ -1212,7 +1212,7 @@ if(isForwardRange!ListRange && is(ElementType!ListRange : const(MimeAppsListFile
  *  desktopFileProvider = Desktop file provider instance. Must be non-null.
  * Returns: Array of found $(D desktopfile.file.DesktopFile) objects capable of opening file of given MIME type or url of given scheme.
  * Note: If no applications found for this mimeType, you may consider to use this function on parent MIME type.
- * See_Also: $(LINK2 https://specifications.freedesktop.org/mime-apps-spec/latest/ar01s03.html, Adding/removing associations), $(D findKnownAssociatedApplications), $(D listAssociatedApplications)
+ * See_Also: $(LINK2 https://specifications.freedesktop.org/mime-apps-spec/latest/ar01s04.html, Adding/removing associations), $(D findKnownAssociatedApplications), $(D listAssociatedApplications)
  */
 const(DesktopFile)[] findAssociatedApplications(ListRange, CacheRange)(string mimeType, ListRange mimeAppsListFiles, CacheRange mimeInfoCacheFiles, IDesktopFileProvider desktopFileProvider)
 if(isForwardRange!ListRange && is(ElementType!ListRange : const(MimeAppsListFile))
@@ -1274,8 +1274,10 @@ version(mimeappsFileTest) unittest
  *  mimeInfoCacheFiles = Range of $(D MimeInfoCacheFile) objects to use in searching.
  *  desktopFileProvider = Desktop file provider instance. Must be non-null.
  * Returns: Found $(D desktopfile.file.DesktopFile) or null if not found.
- * Note: You probably will need to call this function on parent MIME type if it fails for original mimeType.
- * See_Also: $(LINK2 https://specifications.freedesktop.org/mime-apps-spec/latest/ar01s04.html, Default Application)
+ * Note: You may consider calling this function on parent MIME types (recursively until application is found) if it fails for the original mimeType.
+ *      Retrieving parent MIME types is out of the scope of this library. $(LINK2 https://github.com/FreeSlave/mime, MIME library) is available for that purpose.
+ *      Check the $(LINK2 https://github.com/FreeSlave/mimeapps/blob/master/examples/open.d, Open example).
+ * See_Also: $(LINK2 https://specifications.freedesktop.org/mime-apps-spec/latest/ar01s03.html, Default Application)
  */
 const(DesktopFile) findDefaultApplication(ListRange, CacheRange)(string mimeType, ListRange mimeAppsListFiles, CacheRange mimeInfoCacheFiles, IDesktopFileProvider desktopFileProvider)
 if(isForwardRange!ListRange && is(ElementType!ListRange : const(MimeAppsListFile))
@@ -1433,9 +1435,9 @@ static if (isFreedesktop)
      * Change MIME Applications Associations for the current user by applying the provided query.
      *
      * For compatibility purposes it overwrites user overrides in the deprecated location too.
-     * It will not overwrite desktop-specific overrides.
      *
      * $(BLUE This function is Freedesktop only).
+     * Note: It will not overwrite desktop-specific overrides.
      * See_Also: $(D userMimeAppsListPaths), $(D userAppDataMimeAppsListPaths)
      */
     @safe void updateAssociations(ref scope const AssociationUpdateQuery query)
