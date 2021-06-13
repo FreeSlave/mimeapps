@@ -2,7 +2,7 @@
 
 D library for finding associations between MIME types and applications, e.g. for deciding which application should be used to open a file.
 
-[![Build Status](https://travis-ci.org/FreeSlave/mimeapps.svg?branch=master)](https://travis-ci.org/FreeSlave/mimeapps) [![Coverage Status](https://coveralls.io/repos/github/FreeSlave/mimeapps/badge.svg?branch=master)](https://coveralls.io/github/FreeSlave/mimeapps?branch=master)
+[![Build Status](https://github.com/FreeSlave/mimeapps/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/FreeSlave/mimeapps/actions/workflows/ci.yml) [![Coverage Status](https://coveralls.io/repos/github/FreeSlave/mimeapps/badge.svg?branch=master)](https://coveralls.io/github/FreeSlave/mimeapps?branch=master)
 
 [Online documentation](https://freeslave.github.io/d-freedesktop/docs/mimeapps.html)
 
